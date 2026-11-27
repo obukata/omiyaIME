@@ -108,6 +108,11 @@ public final class WalkView: NSView {
     private let dogOutline = CALayer()
     private var poses = PoseMachine()
     private var lastSteps: Int?
+    private var lastDigCount: Int?
+    /// The treasure from the latest dig, shown above Omiya for a moment.
+    private let findIcon = CALayer()
+    private let findLabel = CALayer()
+    private var findIconY: CGFloat = 0
     private var streetLoopWidth: CGFloat = 0
     private var offset: CGFloat = 0
     private var elapsed: Double = 0
@@ -123,7 +128,8 @@ public final class WalkView: NSView {
     public init(layout: Layout = Layout(), progressFile: WalkProgressFile? = WalkProgressFile()) {
         self.layout = layout
         self.progressFile = progressFile
-        let names = (0..<4).map { "walk_\($0)" } + (0..<5).map { "sit_\($0)" } + (0..<6).map { "sleep_\($0)" } + ["zz"]
+        let names = (0..<4).map { "walk_\($0)" } + (0..<5).map { "sit_\($0)" } + (0..<6).map { "sleep_\($0)" }
+            + (0..<8).map { "dig_\($0)" } + (0..<6).map { "sniff_\($0)" } + ["zz"]
         frames = Dictionary(uniqueKeysWithValues: names.compactMap { name in WalkArt.image(named: name).map { (name, $0) } })
         outlines = frames.compactMapValues { PixelArt.outline(of: $0, pixels: 2) }
         super.init(frame: CGRect(origin: .zero, size: Self.size(for: layout)))
@@ -208,6 +214,18 @@ public final class WalkView: NSView {
         footLabel.magnificationFilter = .nearest
         footLabel.contentsScale = 2
         scene.addSublayer(footLabel)
+        findIcon.bounds = CGRect(x: 0, y: 0, width: 32, height: 32)
+        findIcon.contentsScale = 2
+        findIcon.magnificationFilter = .nearest
+        findIcon.isHidden = true
+        findLabel.contentsScale = 2
+        findLabel.magnificationFilter = .nearest
+        findLabel.isHidden = true
+        findIconY = m + dog.frame.minY - 6
+        findIcon.position = CGPoint(x: m + dog.frame.midX + 30, y: findIconY)
+        findLabel.position = CGPoint(x: findIcon.position.x, y: findIconY)
+        scene.addSublayer(findIcon)
+        scene.addSublayer(findLabel)
 
         scene.addSublayer(above)
         above.addSublayer(pixelLayer(PixelArt.ring(n, thickness: layout.rimDots, color: PixelArt.white), frame: circle))
@@ -346,6 +364,21 @@ public final class WalkView: NSView {
         }
     }
 
+    /// Plays a dig. If something turned up, it shows above Omiya with its name afterwards.
+    public func startDig(finding treasureID: String?) {
+        let treasure = treasureID.flatMap(TreasureCatalog.treasure(id:))
+        if let treasure, let image = WalkArt.image(named: treasure.id),
+           let label = PixelArt.outlinedLabel(treasure.name, size: 11) {
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            findIcon.contents = PixelArt.withOutline(image, pixels: 2)
+            findLabel.contents = label.image
+            findLabel.bounds = CGRect(origin: .zero, size: label.points)
+            CATransaction.commit()
+        }
+        poses.startDig(found: treasure != nil, at: elapsed)
+    }
+
     private func reloadProgress() {
         guard let progressFile else { return }
         let date = progressFile.modificationDate
@@ -354,6 +387,8 @@ public final class WalkView: NSView {
         let progress = progressFile.load()
         if let lastSteps, progress.steps > lastSteps { poses.noteStep(at: elapsed) }
         lastSteps = progress.steps
+        if let lastDigCount, progress.digCount > lastDigCount { startDig(finding: progress.lastFind) }
+        lastDigCount = progress.digCount
         status = .walked(progress)
     }
 
@@ -372,6 +407,13 @@ public final class WalkView: NSView {
             dogOutline.contents = outlines[pose.frame.imageName]
         }
         zz.isHidden = !pose.showsZz
+        findIcon.isHidden = !pose.showsFind
+        findLabel.isHidden = !pose.showsFind
+        if pose.showsFind {
+            let bob = (2 * sin(elapsed * 4)).rounded()
+            findIcon.position.y = findIconY + bob
+            findLabel.position.y = findIconY - findIcon.bounds.height / 2 - findLabel.bounds.height / 2 - 2 + bob
+        }
         if pose.showsZz {
             // A gentle sway, kept on whole points so the dots stay square.
             let dx = (1.5 * sin(elapsed * 2.0)).rounded(), dy = (2 * sin(elapsed * 1.3)).rounded()

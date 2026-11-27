@@ -21,7 +21,11 @@ final class WalkProgressTests: XCTestCase {
         XCTAssertEqual(file.load(), WalkProgress())
         try file.save(WalkProgress(steps: 42))
         XCTAssertEqual(file.load().steps, 42)
-        XCTAssertEqual(String(decoding: try Data(contentsOf: file.location), as: UTF8.self), #"{"steps":42}"#)
+        let saved = try JSONSerialization.jsonObject(with: Data(contentsOf: file.location)) as? [String: Any]
+        XCTAssertEqual(Set(saved?.keys ?? [:].keys), ["steps", "found", "digCount"], "No key or text is stored")
+        // Files from before treasures still load.
+        try Data(#"{"steps":7}"#.utf8).write(to: file.location)
+        XCTAssertEqual(file.load(), WalkProgress(steps: 7))
     }
 
     @MainActor
@@ -36,5 +40,45 @@ final class WalkProgressTests: XCTestCase {
         XCTAssertEqual(file.load().steps, 10, "Nothing is written before the flush")
         counter.flush()
         XCTAssertEqual(file.load().steps, 12)
+    }
+
+    func testDigsOncePerKilometre() {
+        var progress = WalkProgress(steps: 4_998)
+        var rolls = 0
+        progress.walk(1) { rolls += 1; return 0.99 }
+        XCTAssertEqual(progress.digCount, 0)
+        progress.walk(1) { rolls += 1; return 0.99 }
+        XCTAssertEqual(progress.digCount, 1, "Reaching 1 km digs")
+        XCTAssertNil(progress.lastFind, "0.99 is above the find chance")
+        progress.walk(10_000) { 0.99 }
+        XCTAssertEqual(progress.digCount, 3, "Passing 2 km and 3 km digs twice")
+        XCTAssertEqual(progress.distanceText, "3.0km")
+    }
+
+    func testFindsTreasureByRarity() {
+        let rule = DigRule()
+        var values: [Double] = [0, 0, 0]
+        XCTAssertEqual(rule.roll { values.removeFirst() }?.name, "骨", "Lowest roll: first common")
+        values = [0, 0.86, 0]
+        XCTAssertEqual(rule.roll { values.removeFirst() }?.rarity, .uncommon)
+        values = [0, 0.99, 0.99]
+        XCTAssertEqual(rule.roll { values.removeFirst() }?.name, "伝説の剣")
+        values = [0.5]
+        XCTAssertNil(rule.roll { values.removeFirst() }, "Half of the digs find nothing")
+
+        var progress = WalkProgress()
+        values = [0, 0, 0]
+        progress.dig { values.removeFirst() }
+        values = [0, 0, 0]
+        progress.dig { values.removeFirst() }
+        XCTAssertEqual(progress.found, ["treasure_01": 2])
+        XCTAssertEqual(progress.lastFind, "treasure_01")
+        XCTAssertEqual(progress.digCount, 2)
+    }
+
+    func testCatalogMatchesTheDraftSheet() {
+        XCTAssertEqual(TreasureCatalog.all.count, 46)
+        XCTAssertEqual(Set(TreasureCatalog.all.map(\.id)).count, 46)
+        XCTAssertEqual(TreasureCatalog.all.filter { $0.rarity == .legendary }.map(\.name), ["ユニコーン", "恐竜の化石", "埴輪", "伝説の剣"])
     }
 }

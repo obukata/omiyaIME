@@ -16,6 +16,10 @@ final class PreviewDelegate: NSObject, NSApplicationDelegate {
         settings.isEnabled = false
         menu.autoenablesItems = false
         menu.addItem(.separator())
+        // Prototype only: dig right away instead of waiting for the next kilometre. The find is saved.
+        let dig = menu.addItem(withTitle: "（試作用）いま掘る", action: #selector(digNow), keyEquivalent: "")
+        dig.target = self
+        menu.addItem(.separator())
         menu.addItem(withTitle: "終了", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "")
         panel.walkView?.menu = menu
         panel.walkView?.gearMenu = menu
@@ -24,12 +28,20 @@ final class PreviewDelegate: NSObject, NSApplicationDelegate {
         panel.orderFrontRegardless()
         self.panel = panel
     }
+
+    @objc private func digNow() {
+        let file = WalkProgressFile()
+        var progress = file.load()
+        progress.dig()
+        try? file.save(progress)
+    }
 }
 
 // Development option: `--treasure-snapshot out.png` writes the treasure list as a picture and exits.
 if let index = CommandLine.arguments.firstIndex(of: "--treasure-snapshot"), index + 1 < CommandLine.arguments.count {
     MainActor.assumeIsolated {
-        if let data = TreasureWindowController.snapshotPNG() {
+        let found = Dictionary(uniqueKeysWithValues: TreasureCatalog.all.prefix(12).map { ($0.id, 1) } + [("treasure_43", 2)])
+        if let data = TreasureWindowController.snapshotPNG(found: found) {
             try? data.write(to: URL(fileURLWithPath: CommandLine.arguments[index + 1]))
         }
     }
@@ -47,6 +59,7 @@ if let index = CommandLine.arguments.firstIndex(of: "--snapshot"), index + 1 < C
         let view = WalkView(progressFile: steps == nil ? WalkProgressFile() : nil)
         if let steps { view.status = .walked(WalkProgress(steps: steps)) }
         if args.contains("--closed") { view.setExpanded(false, animated: false) } else { view.setExpanded(true, animated: false) }
+        if let dig = args.firstIndex(of: "--dig"), dig + 1 < args.count { view.startDig(finding: args[dig + 1]) }
         // Step through time so pose changes play as they would on screen.
         var time = 0.0
         while time < seconds { view.advance(by: 1.0 / 30); time += 1.0 / 30 }

@@ -183,6 +183,18 @@ enum PixelArt {
         return context.makeImage()
     }
 
+    /// `image` drawn over its own white outline.
+    static func withOutline(_ image: CGImage, pixels: Int) -> CGImage? {
+        guard let outline = outline(of: image, pixels: pixels),
+              let context = CGContext(data: nil, width: image.width, height: image.height, bitsPerComponent: 8,
+                                      bytesPerRow: 0, space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+        let rect = CGRect(x: 0, y: 0, width: image.width, height: image.height)
+        context.draw(outline, in: rect)
+        context.draw(image, in: rect)
+        return context.makeImage()
+    }
+
     /// Small white text with a one-point black outline, drawn at 2x without smoothing,
     /// so it stays readable on any desktop picture. Returns the image and its size in points.
     static func outlinedLabel(_ text: String, size: CGFloat) -> (image: CGImage, points: CGSize)? {

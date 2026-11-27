@@ -1,22 +1,24 @@
 import AppKit
+import OmiyaWalkCore
 
-/// The treasure list opened from the chest icon. Treasures themselves are not decided yet,
-/// so every slot shows a question mark for now.
+/// The treasure list opened from the chest icon. Found treasures show their picture,
+/// the rest a question mark.
 @MainActor
 public final class TreasureWindowController {
     public static let shared = TreasureWindowController()
 
-    /// Placeholder until the list of treasures is decided.
-    public static let slotCount = 40
-    public var foundCount = 0
-
     private var window: NSWindow?
+    private let file: WalkProgressFile
 
-    public init() {}
+    public init(file: WalkProgressFile = WalkProgressFile()) {
+        self.file = file
+    }
 
     public func show() {
         let window = self.window ?? makeWindow()
         self.window = window
+        // Read the latest finds every time it opens.
+        window.contentView = TreasureGridView(found: file.load().found)
         if !window.isVisible { window.center() }
         NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
@@ -24,7 +26,7 @@ public final class TreasureWindowController {
     }
 
     private func makeWindow() -> NSWindow {
-        let view = TreasureGridView(slots: Self.slotCount, found: foundCount)
+        let view = TreasureGridView(found: [:])
         let window = NSWindow(contentRect: CGRect(origin: .zero, size: view.frame.size),
                               styleMask: [.titled, .closable], backing: .buffered, defer: false)
         window.title = "おみや君のたからもの"
@@ -35,8 +37,8 @@ public final class TreasureWindowController {
     }
 
     /// For checking the look without showing the window.
-    public static func snapshotPNG() -> Data? {
-        let view = TreasureGridView(slots: slotCount, found: 0)
+    public static func snapshotPNG(found: [String: Int]) -> Data? {
+        let view = TreasureGridView(found: found)
         guard let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return nil }
         view.cacheDisplay(in: view.bounds, to: rep)
         return rep.representation(using: .png, properties: [:])
@@ -46,8 +48,9 @@ public final class TreasureWindowController {
 /// A dark grid of treasure slots, like an achievements screen.
 @MainActor
 final class TreasureGridView: NSView {
-    private let slots: Int
-    private let found: Int
+    private let treasures = TreasureCatalog.all
+    private let found: [String: Int]
+    private var images: [String: CGImage] = [:]
     private let columns = 8
     private let cell: CGFloat = 48
     private let padding: CGFloat = 20
@@ -55,14 +58,16 @@ final class TreasureGridView: NSView {
     private let mark = PixelArt.questionMark(color: PixelArt.RGBA(r: 120, g: 32, b: 32, a: 255))
     private let markShadow = PixelArt.questionMark(color: PixelArt.RGBA(r: 20, g: 6, b: 6, a: 255))
 
-    init(slots: Int, found: Int) {
-        self.slots = slots
+    init(found: [String: Int]) {
         self.found = found
-        let rows = (slots + 7) / 8
+        let rows = (treasures.count + 7) / 8
         super.init(frame: CGRect(x: 0, y: 0, width: padding * 2 + cell * 8,
                                  height: header + padding + cell * CGFloat(rows) + padding))
-        for index in 0..<slots {
-            addToolTip(cellRect(index), owner: "？？？（まだ見つけていない）" as NSString, userData: nil)
+        for (index, treasure) in treasures.enumerated() {
+            let isFound = (found[treasure.id] ?? 0) > 0
+            if isFound { images[treasure.id] = WalkArt.image(named: treasure.id) }
+            let tip = isFound ? treasure.name : "？？？（まだ見つけていない）"
+            addToolTip(cellRect(index), owner: tip as NSString, userData: nil)
         }
     }
 
@@ -82,7 +87,8 @@ final class TreasureGridView: NSView {
                    ending: NSColor(srgbRed: 0.09, green: 0.09, blue: 0.11, alpha: 1))?
             .draw(in: bounds, angle: 90)
 
-        let title = NSAttributedString(string: "見つけた数  \(found) / \(slots)", attributes: [
+        let foundKinds = treasures.filter { (found[$0.id] ?? 0) > 0 }.count
+        let title = NSAttributedString(string: "見つけた数  \(foundKinds) / \(treasures.count)", attributes: [
             .font: NSFont(name: "HiraginoSans-W6", size: 13) ?? .boldSystemFont(ofSize: 13),
             .foregroundColor: NSColor(white: 1, alpha: 0.75)
         ])
@@ -91,8 +97,22 @@ final class TreasureGridView: NSView {
         context.interpolationQuality = .none
         let dot: CGFloat = 4
         let size = CGSize(width: 5 * dot, height: 7 * dot)
-        for index in 0..<slots {
+        for (index, treasure) in treasures.enumerated() {
             let rect = cellRect(index)
+            if let image = images[treasure.id] {
+                let side: CGFloat = 32
+                context.saveGState()
+                context.translateBy(x: rect.midX - side / 2, y: rect.midY + side / 2)
+                context.scaleBy(x: 1, y: -1)
+                context.draw(image, in: CGRect(x: 0, y: 0, width: side, height: side))
+                context.restoreGState()
+                if let count = found[treasure.id], count > 1 {
+                    NSAttributedString(string: "×\(count)", attributes: [
+                        .font: NSFont.boldSystemFont(ofSize: 9), .foregroundColor: NSColor(white: 1, alpha: 0.7)
+                    ]).draw(at: CGPoint(x: rect.maxX - 16, y: rect.maxY - 14))
+                }
+                continue
+            }
             let origin = CGPoint(x: (rect.midX - size.width / 2).rounded(), y: (rect.midY - size.height / 2).rounded())
             // Flip each image back upright inside the flipped view.
             for (image, offset) in [(markShadow, CGFloat(2)), (mark, CGFloat(0))] {

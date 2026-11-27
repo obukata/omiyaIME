@@ -11,12 +11,14 @@ public struct PoseMachine: Sendable {
 
     /// One picture of the sprite sheets: `walk_N`, `sit_N` or `sleep_N`.
     public enum Frame: Equatable, Sendable {
-        case walk(Int), sit(Int), sleep(Int)
+        case walk(Int), sit(Int), sleep(Int), dig(Int), sniff(Int)
         public var imageName: String {
             switch self {
             case .walk(let i): "walk_\(i)"
             case .sit(let i): "sit_\(i)"
             case .sleep(let i): "sleep_\(i)"
+            case .dig(let i): "dig_\(i)"
+            case .sniff(let i): "sniff_\(i)"
             }
         }
     }
@@ -27,10 +29,13 @@ public struct PoseMachine: Sendable {
         public var scrolls: Bool
         /// The "zz" shows only while he sleeps.
         public var showsZz: Bool
-        public init(frame: Frame, scrolls: Bool, showsZz: Bool) {
+        /// The found treasure shows above him for a moment after a dig.
+        public var showsFind: Bool
+        public init(frame: Frame, scrolls: Bool, showsZz: Bool, showsFind: Bool = false) {
             self.frame = frame
             self.scrolls = scrolls
             self.showsZz = showsZz
+            self.showsFind = showsFind
         }
     }
 
@@ -46,6 +51,11 @@ public struct PoseMachine: Sendable {
         /// While sitting, he huffs (`sit_4`) now and then: every 8–20 seconds, for 0.6 seconds.
         public var huffEvery: ClosedRange<Double> = 8...20
         public var huffDuration: Double = 0.6
+        /// A dig: the digging frames twice, then a look up, then the find (if any) for a while.
+        public var digRounds = 2
+        public var digFramesPerSecond: Double = 8
+        public var lookUpFramesPerSecond: Double = 6
+        public var showFindFor: Double = 3
         public init() {}
     }
 
@@ -59,6 +69,7 @@ public struct PoseMachine: Sendable {
     private var lastStep: Double
     private var transition: (frames: [Frame], start: Double, framesPerSecond: Double, target: Pose)?
     private var nextHuff: Double?
+    private var digging: (start: Double, found: Bool)?
     private let random: @Sendable (ClosedRange<Double>) -> Double
 
     /// Starts sitting, as if the last key was pressed just long enough ago.
@@ -83,7 +94,34 @@ public struct PoseMachine: Sendable {
         return .sleeping
     }
 
+    /// Starts a dig. He stands to dig, so afterwards he sits down again if no keys come.
+    public mutating func startDig(found: Bool, at now: Double) {
+        digging = (now, found)
+        transition = nil
+        nextHuff = nil
+        pose = .walking
+    }
+
+    public var isDigging: Bool { digging != nil }
+
     public mutating func update(at now: Double) -> Output {
+        if let dig = digging {
+            let digFrames = 8 * timing.digRounds
+            let digTime = Double(digFrames) / timing.digFramesPerSecond
+            let lookTime = 6 / timing.lookUpFramesPerSecond
+            let elapsed = now - dig.start
+            if elapsed < digTime {
+                return Output(frame: .dig(Int(elapsed * timing.digFramesPerSecond) % 8), scrolls: false, showsZz: false)
+            }
+            if elapsed < digTime + lookTime {
+                let i = min(5, Int((elapsed - digTime) * timing.lookUpFramesPerSecond))
+                return Output(frame: .sniff(i), scrolls: false, showsZz: false)
+            }
+            if dig.found && elapsed < digTime + lookTime + timing.showFindFor {
+                return Output(frame: .sniff(5), scrolls: false, showsZz: false, showsFind: true)
+            }
+            digging = nil
+        }
         if let current = transition {
             let index = Int((now - current.start) * current.framesPerSecond)
             if index < current.frames.count {

@@ -64,4 +64,21 @@ final class PoseMachineTests: XCTestCase {
         XCTAssertEqual(machine.update(at: 10.7).frame, .sit(3))
         XCTAssertEqual(machine.update(at: 20.8).frame, .sit(4))
     }
+
+    func testDigThenLookUpThenShowTheFind() {
+        var machine = PoseMachine(now: 0)
+        machine.noteStep(at: 10)
+        machine.startDig(found: true, at: 10)
+        XCTAssertEqual(machine.update(at: 10).frame, .dig(0))
+        XCTAssertEqual(machine.update(at: 11.1).frame, .dig(0), "Second round of digging")
+        XCTAssertEqual(machine.update(at: 12.1).frame, .sniff(0))
+        let find = machine.update(at: 13.5)
+        XCTAssertEqual(find, .init(frame: .sniff(5), scrolls: false, showsZz: false, showsFind: true))
+        XCTAssertFalse(machine.update(at: 16.5).showsFind)
+        XCTAssertFalse(machine.isDigging)
+
+        machine.startDig(found: false, at: 20)
+        XCTAssertFalse(machine.update(at: 23.5).showsFind, "Nothing to show when nothing was found")
+        XCTAssertFalse(machine.isDigging)
+    }
 }
