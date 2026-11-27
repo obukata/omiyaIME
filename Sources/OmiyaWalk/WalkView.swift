@@ -36,7 +36,6 @@ public final class WalkView: NSView {
         /// Sidewalk line in the street picture, in its pixels from the top.
         public var streetSidewalk: CGFloat = 592
         public var walkSpeed: CGFloat = 22
-        public var framesPerSecond: Double = 6
         /// How long the pointer rests on Omiya before the stage opens.
         public var revealDelay: Double = 1.5
         /// How long the pointer stays away before the stage closes again.
@@ -95,7 +94,10 @@ public final class WalkView: NSView {
     private let progressFile: WalkProgressFile?
     private var progressDate: Date?
     private var lastProgressCheck: CFTimeInterval = 0
-    private let walkFrames: [CGImage]
+    private let frames: [String: CGImage]
+    private let zz = CALayer()
+    private var poses = PoseMachine()
+    private var lastSteps: Int?
     private var streetLoopWidth: CGFloat = 0
     private var offset: CGFloat = 0
     private var elapsed: Double = 0
@@ -111,7 +113,8 @@ public final class WalkView: NSView {
     public init(layout: Layout = Layout(), progressFile: WalkProgressFile? = WalkProgressFile()) {
         self.layout = layout
         self.progressFile = progressFile
-        walkFrames = (0..<4).compactMap { WalkArt.image(named: "walk_\($0)") }
+        let names = (0..<4).map { "walk_\($0)" } + (0..<5).map { "sit_\($0)" } + (0..<6).map { "sleep_\($0)" } + ["zz"]
+        frames = Dictionary(uniqueKeysWithValues: names.compactMap { name in WalkArt.image(named: name).map { (name, $0) } })
         super.init(frame: CGRect(origin: .zero, size: Self.size(for: layout)))
         wantsLayer = true
         setUpLayers()
@@ -177,8 +180,14 @@ public final class WalkView: NSView {
         dog.position = CGPoint(x: center.x - layout.spriteSize.width / 2, y: feetY - layout.spriteBaseline)
         dog.contentsScale = 2
         dog.magnificationFilter = .nearest
-        dog.contents = walkFrames.first
+        dog.contents = frames["sit_3"]
         content.addSublayer(dog)
+        zz.frame = dog.frame
+        zz.contentsScale = 2
+        zz.magnificationFilter = .nearest
+        zz.contents = frames["zz"]
+        zz.isHidden = true
+        content.addSublayer(zz)
         feetPoint = CGPoint(x: m + center.x, y: m + feetY)
         footLabel.magnificationFilter = .nearest
         footLabel.contentsScale = 2
@@ -321,7 +330,10 @@ public final class WalkView: NSView {
         let date = progressFile.modificationDate
         guard date != progressDate else { return }
         progressDate = date
-        status = .walked(progressFile.load())
+        let progress = progressFile.load()
+        if let lastSteps, progress.steps > lastSteps { poses.noteStep(at: elapsed) }
+        lastSteps = progress.steps
+        status = .walked(progress)
     }
 
     /// Moves the walk forward by `delta` seconds.
@@ -329,12 +341,17 @@ public final class WalkView: NSView {
         elapsed += delta
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        if streetLoopWidth > 0 {
+        let pose = poses.update(at: elapsed)
+        if pose.scrolls, streetLoopWidth > 0 {
             offset = (offset + layout.walkSpeed * delta).truncatingRemainder(dividingBy: streetLoopWidth)
             street.position.x = -offset
         }
-        if !walkFrames.isEmpty {
-            dog.contents = walkFrames[Int(elapsed * layout.framesPerSecond) % walkFrames.count]
+        if let image = frames[pose.frame.imageName] { dog.contents = image }
+        zz.isHidden = !pose.showsZz
+        if pose.showsZz {
+            // A gentle sway, kept on whole points so the dots stay square.
+            let dx = (1.5 * sin(elapsed * 2.0)).rounded(), dy = (2 * sin(elapsed * 1.3)).rounded()
+            zz.frame = dog.frame.offsetBy(dx: dx, dy: dy)
         }
         CATransaction.commit()
     }

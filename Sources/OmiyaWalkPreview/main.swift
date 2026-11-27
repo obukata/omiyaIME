@@ -36,7 +36,9 @@ if let index = CommandLine.arguments.firstIndex(of: "--snapshot"), index + 1 < C
         let view = WalkView(progressFile: steps == nil ? WalkProgressFile() : nil)
         if let steps { view.status = .walked(WalkProgress(steps: steps)) }
         if args.contains("--closed") { view.setExpanded(false, animated: false) } else { view.setExpanded(true, animated: false) }
-        view.advance(by: seconds)
+        // Step through time so pose changes play as they would on screen.
+        var time = 0.0
+        while time < seconds { view.advance(by: 1.0 / 30); time += 1.0 / 30 }
         if let data = view.snapshotPNG() { try? data.write(to: URL(fileURLWithPath: path)) }
     }
     exit(0)

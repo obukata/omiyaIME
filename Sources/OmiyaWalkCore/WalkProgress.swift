@@ -70,7 +70,7 @@ public final class WalkStepCounter {
     private var pending = 0
     private var timer: Timer?
 
-    public init(file: WalkProgressFile = WalkProgressFile(), interval: TimeInterval = 2) {
+    public init(file: WalkProgressFile = WalkProgressFile(), interval: TimeInterval = 1) {
         self.file = file
         self.interval = interval
     }
