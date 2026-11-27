@@ -1,8 +1,8 @@
 import AppKit
 import CoreText
 
-// 入力メニュー（メニューバー）用のアイコンを生成する自作素材。外部の画像・記号素材は使わない。
-//   Japanese.tiff: 柴犬の顔（おみや）。白い口元（裏白）は半透明で表す。
+// 入力メニュー（メニューバー）用のアイコンを生成する。素材は利用者・本プロジェクトの自作のみ。
+//   Japanese.tiff: 柴犬（おみや）のドット絵 Bundle/Artwork/omiya-shiba.png から作る。
 //   Roman.tiff:    角丸の四角から「A」を抜いた形。
 // どちらも16ptのテンプレート画像（1x/2x）で、メニューバーの明暗に合わせてmacOSが色を付ける。
 // 使い方: swift Scripts/make-icons.swift [プレビューPNGの出力先フォルダ]
@@ -28,69 +28,29 @@ func render(scale: Int, _ draw: (NSGraphicsContext) -> Void) -> NSBitmapImageRep
     return rep
 }
 
-func oval(_ x: CGFloat, _ y: CGFloat, _ width: CGFloat, _ height: CGFloat) -> NSBezierPath {
-    NSBezierPath(ovalIn: NSRect(x: x - width / 2, y: y - height / 2, width: width, height: height))
-}
-
-func triangle(_ points: [NSPoint]) -> NSBezierPath {
-    let path = NSBezierPath()
-    path.move(to: points[0])
-    points.dropFirst().forEach { path.line(to: $0) }
-    path.close()
-    path.lineJoinStyle = .round
-    return path
-}
-
-/// Shiba face, drawn on a 16pt grid (origin bottom-left).
-func drawShiba(_ context: NSGraphicsContext) {
-    let ink = NSColor.black
-    ink.setFill()
-    ink.setStroke()
-
-    // Upright triangular ears.
-    for side: CGFloat in [-1, 1] {
-        let ear = triangle([NSPoint(x: 8 + side * 5.6, y: 8.2),
-                            NSPoint(x: 8 + side * 4.9, y: 14.6),
-                            NSPoint(x: 8 + side * 1.6, y: 11.6)])
-        ear.lineWidth = 1
-        ear.fill()
-        ear.stroke()
+/// Draws Bundle/Artwork/omiya-shiba.png (the owner's AI-generated pixel art of Omiya), trimmed to its
+/// visible pixels and fitted to the icon. Only its alpha matters: the icon is a template image.
+func drawArtwork(_ context: NSGraphicsContext) {
+    let url = resources.deletingLastPathComponent().appendingPathComponent("Artwork/omiya-shiba.png")
+    guard let source = NSBitmapImageRep(data: (try? Data(contentsOf: url)) ?? Data()) else {
+        fatalError("画像を読めませんでした: \(url.path)")
     }
-    // Head: slightly wider than tall, with full cheeks.
-    oval(8, 7.3, 12.6, 10.4).fill()
-
-    // Everything below is cut out of, or faded from, the solid head.
-    context.compositingOperation = .destinationOut
-    // Inner ears.
-    NSColor.black.withAlphaComponent(0.55).setFill()
-    for side: CGFloat in [-1, 1] {
-        triangle([NSPoint(x: 8 + side * 4.6, y: 10.2),
-                  NSPoint(x: 8 + side * 4.5, y: 13.1),
-                  NSPoint(x: 8 + side * 2.6, y: 11.3)]).fill()
+    var minX = source.pixelsWide, minY = source.pixelsHigh, maxX = -1, maxY = -1
+    for y in 0..<source.pixelsHigh {
+        for x in 0..<source.pixelsWide where (source.colorAt(x: x, y: y)?.alphaComponent ?? 0) > 0.5 {
+            minX = min(minX, x); maxX = max(maxX, x); minY = min(minY, y); maxY = max(maxY, y)
+        }
     }
-    // White muzzle and cheeks (urajiro).
-    NSColor.black.withAlphaComponent(0.55).setFill()
-    oval(8, 4.6, 8.4, 5.4).fill()
-    // Eyes and eyebrow dots.
-    NSColor.black.setFill()
-    oval(5.3, 7.9, 1.6, 1.8).fill()
-    oval(10.7, 7.9, 1.6, 1.8).fill()
-    oval(5.4, 9.9, 1.1, 0.8).fill()
-    oval(10.6, 9.9, 1.1, 0.8).fill()
-
-    // Nose and mouth sit on the faded muzzle at full strength.
-    context.compositingOperation = .sourceOver
-    NSColor.black.setFill()
-    oval(8, 5.6, 2.2, 1.6).fill()
-    let mouth = NSBezierPath()
-    mouth.move(to: NSPoint(x: 8, y: 5.0))
-    mouth.line(to: NSPoint(x: 8, y: 4.1))
-    mouth.move(to: NSPoint(x: 6.6, y: 3.7))
-    mouth.curve(to: NSPoint(x: 8, y: 4.1), controlPoint1: NSPoint(x: 7.1, y: 3.3), controlPoint2: NSPoint(x: 7.7, y: 3.5))
-    mouth.curve(to: NSPoint(x: 9.4, y: 3.7), controlPoint1: NSPoint(x: 8.3, y: 3.5), controlPoint2: NSPoint(x: 8.9, y: 3.3))
-    mouth.lineWidth = 0.7
-    mouth.lineCapStyle = .round
-    mouth.stroke()
+    guard maxX >= minX else { fatalError("画像に表示部分がありません") }
+    // NSBitmapImageRep rows run top-down; drawing rectangles run bottom-up.
+    let crop = NSRect(x: minX, y: source.pixelsHigh - 1 - maxY, width: maxX - minX + 1, height: maxY - minY + 1)
+    let width = points * 0.98
+    let height = width * crop.height / crop.width
+    context.imageInterpolation = .high
+    let image = NSImage(size: NSSize(width: source.pixelsWide, height: source.pixelsHigh))
+    image.addRepresentation(source)
+    image.draw(in: NSRect(x: (points - width) / 2, y: (points - height) / 2, width: width, height: height),
+               from: crop, operation: .sourceOver, fraction: 1)
 }
 
 /// Rounded badge with the letter cut out, centred on the glyph's own outline.
@@ -111,7 +71,7 @@ func drawLetterBadge(_ letter: String) -> (NSGraphicsContext) -> Void {
     }
 }
 
-let icons: [(String, (NSGraphicsContext) -> Void)] = [("Japanese", drawShiba), ("Roman", drawLetterBadge("A"))]
+let icons: [(String, (NSGraphicsContext) -> Void)] = [("Japanese", drawArtwork), ("Roman", drawLetterBadge("A"))]
 for (name, draw) in icons {
     let reps = [1, 2].map { render(scale: $0, draw) }
     guard let data = NSBitmapImageRep.tiffRepresentationOfImageReps(in: reps, using: .lzw, factor: 0) else {
