@@ -6,7 +6,7 @@ final class InputSessionTests: XCTestCase {
         let examples = [
             ("kyou", "きょう"), ("gakkou", "がっこう"), ("konnichiha", "こんにちは"),
             ("kan'i", "かんい"), ("kon", "こん"), ("nyu-su", "にゅーす"),
-            ("MATCHA", "まっちゃ"), ("ti", "ち"), ("fa", "ふぁ"), ("xyo", "ょ")
+            ("matcha", "まっちゃ"), ("zhzjzkzl", "←↓↑→"), ("ti", "ち"), ("fa", "ふぁ"), ("xyo", "ょ")
         ]
         for (index, (input, output)) in examples.enumerated() {
             var session = InputSession()
@@ -43,6 +43,30 @@ final class InputSessionTests: XCTestCase {
         XCTAssertTrue(type("tn", in: &session) == .mark("いいてtn"))
         XCTAssertTrue(session.handle(.delete) == .mark("いいてt"))
         XCTAssertTrue(session.handle(.text("e")) == .mark("いいてて"))
+    }
+
+    func testShiftLetterSwitchesToEnglishWithMarkedText() {
+        var session = InputSession()
+        XCTAssertTrue(type("kana", in: &session) == .mark("かな"))
+        XCTAssertTrue(session.handle(.text("A")) == .commitAndMark("かな", "A"))
+        XCTAssertEqual(session.mode, .english)
+        XCTAssertTrue(type("pple", in: &session) == .mark("Apple"))
+        XCTAssertTrue(session.handle(.delete) == .mark("Appl"))
+        XCTAssertTrue(session.handle(.enter) == .commit("Appl"))
+        XCTAssertTrue(session.handle(.text("x")) == .passThrough)
+
+        var spaced = InputSession()
+        XCTAssertTrue(spaced.handle(.text("I")) == .mark("I"))
+        XCTAssertTrue(spaced.handle(.space) == .commit("I "))
+        XCTAssertTrue(spaced.handle(.space) == .passThrough)
+
+        var other = InputSession()
+        _ = other.handle(.text("O"))
+        XCTAssertTrue(other.handle(.nextSegment) == .commitThenPassThrough("O"))
+        _ = other.switchModeByKey(to: .japanese)
+        _ = other.handle(.text("Q"))
+        XCTAssertTrue(other.handle(.escape) == .mark(""))
+        XCTAssertTrue(other.switchModeByKey(to: .japanese) == .passThrough)
     }
 
     func testBracketsBecomeJapaneseQuotes() {

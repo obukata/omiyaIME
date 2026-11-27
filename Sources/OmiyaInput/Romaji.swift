@@ -150,7 +150,9 @@ struct Romaji {
             "tcha": "っちゃ", "tchi": "っち", "tchu": "っちゅ", "tche": "っちぇ", "tcho": "っちょ",
             "xtu": "っ", "xtsu": "っ", "ltu": "っ", "ltsu": "っ",
             "xya": "ゃ", "xyu": "ゅ", "xyo": "ょ", "lya": "ゃ", "lyu": "ゅ", "lyo": "ょ",
-            "xwa": "ゎ", "lwa": "ゎ", "xka": "ゕ", "xke": "ゖ"
+            "xwa": "ゎ", "lwa": "ゎ", "xka": "ゕ", "xke": "ゖ",
+            // Arrows as in the macOS Japanese IME (2026-11-27 user request).
+            "zh": "←", "zj": "↓", "zk": "↑", "zl": "→"
         ]
         table.merge(otherSyllables) { _, alias in alias }
         return table

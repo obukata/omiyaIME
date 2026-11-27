@@ -77,7 +77,13 @@ final class InputController: IMKInputController, @unchecked Sendable {
             return true
         }
         guard let key = Self.key(for: event) else { return false }
-        return apply(session.handle(key), to: client)
+        let previousMode = session.mode
+        let handled = apply(session.handle(key), to: client)
+        // Shift+letter moves to English mode; show it in the input menu as well.
+        if session.mode != previousMode {
+            client.selectMode(session.mode == .japanese ? Self.japaneseSourceID : Self.romanSourceID)
+        }
+        return handled
     }
 
     override func commitComposition(_ sender: Any!) {
@@ -187,6 +193,10 @@ final class InputController: IMKInputController, @unchecked Sendable {
                 selectionRange: NSRange(location: marked.utf16.count, length: 0),
                 replacementRange: Self.currentSelection
             )
+        case .commitThenPassThrough(let text):
+            hideCandidates()
+            client.insertText(text, replacementRange: Self.currentSelection)
+            return false
         case .requestConversion:
             // The input remains marked while the conversion engine is unavailable.
             break
