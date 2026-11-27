@@ -44,7 +44,7 @@ public final class WalkView: NSView {
         public var fadeInDuration: Double = 0.3
         public var fadeOutDuration: Double = 0.2
         /// The small distance under Omiya while the stage is closed.
-        public var footLabelSize: CGFloat = 10
+        public var footLabelSize: CGFloat = 12
         public var footLabelGap: CGFloat = 2
         public init() {}
 
