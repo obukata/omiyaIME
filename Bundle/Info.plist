@@ -19,13 +19,15 @@
 	<key>CFBundleShortVersionString</key>
 	<string>0.1.0</string>
 	<key>CFBundleVersion</key>
-	<string>4</string>
+	<string>5</string>
 	<key>ComponentInputModeDict</key>
 	<dict>
 		<key>tsInputModeListKey</key>
 		<dict>
 			<key>com.apple.inputmethod.Japanese</key>
 			<dict>
+				<key>TISIconIsTemplate</key>
+				<true/>
 				<key>TISIconLabels</key>
 				<dict>
 					<key>Primary</key>
