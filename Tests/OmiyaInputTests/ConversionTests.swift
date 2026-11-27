@@ -74,6 +74,15 @@ final class ConversionTests: XCTestCase {
         XCTAssertTrue(session.handle(.text("a")) == .passThrough)
     }
 
+    func testWidthVariantsOfTheReadingComeLast() {
+        let english = ConversionSegment(reading: "IME", candidates: ["IME", "ＩＭＥ"])
+        XCTAssertEqual(CandidatePolicy.ranked(english), ["IME", "ＩＭＥ"])
+        let digits = ConversionSegment(reading: "１２３", candidates: ["百二十三"])
+        XCTAssertEqual(CandidatePolicy.ranked(digits), ["百二十三", "１２３", "123"])
+        let kana = ConversionSegment(reading: "よみ", candidates: ["読み"])
+        XCTAssertEqual(CandidatePolicy.ranked(kana), ["読み", "よみ"])
+    }
+
     func testFilteringAndStablePriorityAcrossAllCandidateSources() {
         let segment = ConversionSegment(
             reading: "よみ",

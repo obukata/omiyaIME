@@ -37,8 +37,25 @@ enum CandidatePolicy {
         let user = segment.userCandidates.filter { isAllowedUserPhrase($0) && seen.insert($0).inserted }
         let converted = segment.candidates.filter { isAllowed($0) && seen.insert($0).inserted }
         // The reading itself is what the user typed, English letters included (e.g. "IME" typed after Shift).
-        let reading = isAllowedUserPhrase(segment.reading) && seen.insert(segment.reading).inserted ? [segment.reading] : []
-        return user + converted + reading
+        // Then the reading itself and its full-/half-width forms, for the rare full-width English or
+        // half-width digits (2026-11-27 user request). They come last and never lead.
+        let readings = [segment.reading, Self.fullWidth(segment.reading), Self.halfWidth(segment.reading)]
+            .filter { isAllowedUserPhrase($0) && seen.insert($0).inserted }
+        return user + converted + readings
+    }
+
+    /// ASCII letters, digits and symbols to their full-width forms.
+    static func fullWidth(_ text: String) -> String {
+        String(String.UnicodeScalarView(text.unicodeScalars.map { scalar in
+            (0x21...0x7E).contains(scalar.value) ? Unicode.Scalar(scalar.value + 0xFEE0) ?? scalar : scalar
+        }))
+    }
+
+    /// Full-width letters, digits and symbols to ASCII.
+    static func halfWidth(_ text: String) -> String {
+        String(String.UnicodeScalarView(text.unicodeScalars.map { scalar in
+            (0xFF01...0xFF5E).contains(scalar.value) ? Unicode.Scalar(scalar.value - 0xFEE0) ?? scalar : scalar
+        }))
     }
 
     /// Words the user registered: English text such as an e-mail address is the user's own choice and

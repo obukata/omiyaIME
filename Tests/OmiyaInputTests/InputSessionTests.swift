@@ -27,11 +27,11 @@ final class InputSessionTests: XCTestCase {
         XCTAssertTrue(session.handle(.enter) == .passThrough)
     }
 
-    func testLeftoverLettersAndDigitsStayHalfWidth() {
+    func testLeftoverLettersStayHalfWidthAndDigitsAreFullWidth() {
         var session = InputSession()
         XCTAssertTrue(type("kyouhaiitn", in: &session) == .mark("きょうはいいtn"))
-        XCTAssertTrue(type("2", in: &session) == .mark("きょうはいいtん2"))
-        XCTAssertTrue(session.handle(.enter) == .commit("きょうはいいtん2"))
+        XCTAssertTrue(type("2", in: &session) == .mark("きょうはいいtん２"))
+        XCTAssertTrue(session.handle(.enter) == .commit("きょうはいいtん２"))
     }
 
     func testDeletingNAndReusingLeftoverLetters() {
@@ -93,8 +93,8 @@ final class InputSessionTests: XCTestCase {
     func testJapanesePunctuationAndWidthsRemainMarkedUntilEnter() {
         var session = InputSession()
         XCTAssertTrue(type("kana,", in: &session) == .mark("かな、"))
-        XCTAssertTrue(type("1!.", in: &session) == .mark("かな、1！。"))
-        XCTAssertTrue(session.handle(.enter) == .commit("かな、1！。"))
+        XCTAssertTrue(type("1!.", in: &session) == .mark("かな、１！。"))
+        XCTAssertTrue(session.handle(.enter) == .commit("かな、１！。"))
         XCTAssertTrue(session.handle(.space) == .commit("　"))
     }
 
