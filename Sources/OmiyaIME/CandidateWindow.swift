@@ -61,16 +61,19 @@ final class CandidateWindow {
 @MainActor
 private final class CandidateListView: NSView {
     private static let font = NSFont.systemFont(ofSize: 17)
-    private static let labelFont = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .regular)
-    private static let footerFont = NSFont.systemFont(ofSize: 12)
+    private static let labelFont = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular)
+    private static let moreImage = NSImage(systemSymbolName: "chevron.down", accessibilityDescription: "次の候補あり")?
+        .withSymbolConfiguration(.init(pointSize: 8, weight: .semibold))
+    private static let footerHeight: CGFloat = 12
     private static let rowHeight: CGFloat = 30
     private static let inset: CGFloat = 8
-    private static let labelWidth: CGFloat = 24
+    private static let labelWidth: CGFloat = 16
 
     var onClick: ((String) -> Void)?
     private var rows: [String] = []
     private var selectedRow = 0
-    private var footer: String?
+    private var hasFooter = false
+    private var hasMore = false
 
     override var isFlipped: Bool { true }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
@@ -81,12 +84,13 @@ private final class CandidateListView: NSView {
         rows = Array(candidates[start..<min(start + CandidateWindow.pageSize, candidates.count)])
         selectedRow = selected - start
         let pages = (candidates.count + CandidateWindow.pageSize - 1) / CandidateWindow.pageSize
-        footer = pages > 1 ? "\(selected + 1) / \(candidates.count)" : nil
+        hasFooter = pages > 1
+        hasMore = page + 1 < pages
         needsDisplay = true
 
         let textWidth = rows.map { ($0 as NSString).size(withAttributes: [.font: Self.font]).width }.max() ?? 0
         let width = max(130, ceil(textWidth) + Self.labelWidth + Self.inset * 2 + 28)
-        let height = CGFloat(rows.count) * Self.rowHeight + Self.inset * 2 + (footer == nil ? 0 : 22)
+        let height = CGFloat(rows.count) * Self.rowHeight + Self.inset * 2 + (hasFooter ? Self.footerHeight : 0)
         return NSSize(width: width, height: height)
     }
 
@@ -100,17 +104,27 @@ private final class CandidateListView: NSView {
                 NSBezierPath(roundedRect: row, xRadius: 7, yRadius: 7).fill()
             }
             let textColor: NSColor = isSelected ? .alternateSelectedControlTextColor : .labelColor
-            let labelColor: NSColor = isSelected ? .alternateSelectedControlTextColor : .secondaryLabelColor
+            if index > 0, !isSelected, index - 1 != selectedRow {
+                NSColor.separatorColor.withAlphaComponent(0.5).setFill()
+                NSRect(x: row.minX + 9, y: row.minY - 0.25, width: row.width - 18, height: 0.5).fill()
+            }
+            let labelColor: NSColor = isSelected
+                ? .alternateSelectedControlTextColor.withAlphaComponent(0.7) : .tertiaryLabelColor
             let label = NSAttributedString(string: "\(index + 1)", attributes: [.font: Self.labelFont, .foregroundColor: labelColor])
             label.draw(at: NSPoint(x: row.minX + 9, y: row.midY - label.size().height / 2))
             let candidate = NSAttributedString(string: text, attributes: [.font: Self.font, .foregroundColor: textColor])
             candidate.draw(at: NSPoint(x: row.minX + Self.labelWidth + 9, y: row.midY - candidate.size().height / 2))
         }
-        if let footer {
-            let attributed = NSAttributedString(string: footer, attributes: [.font: Self.footerFont, .foregroundColor: NSColor.secondaryLabelColor])
-            let size = attributed.size()
-            attributed.draw(at: NSPoint(x: bounds.width - Self.inset - 9 - size.width,
-                                        y: bounds.height - Self.inset - 18))
+        if hasMore, let image = Self.moreImage {
+            let tinted = NSImage(size: image.size, flipped: false) { rect in
+                image.draw(in: rect)
+                NSColor.tertiaryLabelColor.set()
+                rect.fill(using: .sourceAtop)
+                return true
+            }
+            tinted.draw(in: NSRect(x: bounds.width - Self.inset - 9 - image.size.width,
+                                   y: bounds.height - Self.inset - Self.footerHeight / 2 - image.size.height / 2,
+                                   width: image.size.width, height: image.size.height))
         }
     }
 
