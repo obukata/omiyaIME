@@ -47,7 +47,7 @@
 
 **入力メニューのアイコン切り替え（2026-11-27 実機確認、macOS 26.5.2）**: 入力モードのアイコンはInfo.plistが指すバンドル内のファイルからしか読まれず、実行中に変えるAPIは見つからなかった。このため、選ばれたデザイン（`JapaneseShiba.tiff` / `JapaneseFilled.tiff`）を `Japanese.tiff` に上書きして反映する。手順は、入力ソースのキャッシュ（`IntlDataCache`）の削除、`TISRegisterInputSource` による再登録、TextInputMenuAgent・CursorUIViewService・TextInputSwitcherの再起動。リソースを書き換えるとバンドルの封印が崩れる。実機では起動は続いたが、ad-hoc署名のときだけ `codesign --force --sign -` で署名し直して有効に保つ。Developer ID署名の場合は署名を格下げしない。
 
-**Mac標準のユーザ辞書の直接利用（2026-11-27 調査、未実装）**: 標準IMEのユーザ辞書（テキスト置換と共通）は `~/Library/KeyboardServices/TextReplacements.db` にある。Core DataのSQLiteで、`ZTEXTREPLACEMENTENTRY`（`ZSHORTCUT` 読み、`ZPHRASE` 語句、`ZWASDELETED` 削除済み）。この環境では読み取り専用で開けた。ただしAppleが公開した形式ではなく、OS更新で変わりうる。iCloud同期の状態はこのファイルが反映する。インポート（R-13）は公式の書き出しplistを入口とするため、直接読むかは利用者の判断を待つ。
+**Mac標準のユーザ辞書の直接利用（2026-11-27 調査・実装）**: 標準IMEのユーザ辞書（テキスト置換と共通）は `~/Library/KeyboardServices/TextReplacements.db` にある。Core DataのSQLiteで、`ZTEXTREPLACEMENTENTRY`（`ZSHORTCUT` 読み、`ZPHRASE` 語句、`ZWASDELETED` 削除済み）。この環境では読み取り専用で開けた。ただしAppleが公開した形式ではなく、OS更新で変わりうる。iCloud同期の状態はこのファイルが反映する。2026-11-27 に利用者の指示で、読み取り専用で直接読む機能を実装した（`SystemUserDictionary`）。ファイルか書き込みログが変わったときだけ読み直す。削除済みの行、絵文字の語句、英字だけの語句は除く。読めないときは0件として扱い、plistの取り込み（R-13）を代わりの手段として残す。
 
 ### ライセンス調査台帳
 

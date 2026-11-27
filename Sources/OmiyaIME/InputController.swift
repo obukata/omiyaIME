@@ -15,7 +15,7 @@ final class InputController: IMKInputController, @unchecked Sendable {
     private lazy var session: InputSession = {
         let converter = MozcConverter(bundle: .main).map { base in
             UserDictionaryConverter(base: base) {
-                MainActor.assumeIsolated { DictionaryPreferences.shared.entries }
+                MainActor.assumeIsolated { DictionaryPreferences.shared.conversionEntries }
             }
         }
         return InputSession(converter: converter)

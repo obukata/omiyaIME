@@ -9,6 +9,16 @@ final class DictionaryPreferences: ObservableObject {
 
     @Published private(set) var entries: [UserDictionaryEntry] = []
     @Published var errorMessage: String?
+    /// Also convert with the macOS user dictionary, read in place (on unless turned off).
+    @Published var usesSystemDictionary = UserDefaults.standard.object(forKey: "UsesSystemDictionary") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(usesSystemDictionary, forKey: "UsesSystemDictionary") }
+    }
+    let systemDictionary = SystemUserDictionary()
+
+    /// Entries used for conversion: this IME's own words first, then the macOS user dictionary.
+    var conversionEntries: [UserDictionaryEntry] {
+        usesSystemDictionary ? entries + systemDictionary.entries : entries
+    }
     private var store: UserDictionaryFile?
     private var window: NSWindow?
 
@@ -173,6 +183,22 @@ private struct DictionarySettings: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
+            GroupBox {
+                VStack(alignment: .leading, spacing: 4) {
+                    Toggle("Mac標準のユーザ辞書も使う", isOn: $model.usesSystemDictionary)
+                    Text(model.usesSystemDictionary
+                         ? "標準の日本語入力で登録した単語（\(model.systemDictionary.entries.count)件）を、取り込まずにそのまま変換に使います。標準側で変更すると自動で反映されます。"
+                         : "標準の日本語入力で登録した単語は使いません。")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(4)
+            }
+            Text("おみやIMEの単語")
+                .font(.headline)
+                .padding(.top, 4)
             Table(model.entries.map(DictionaryRow.init), selection: $selection) {
                 TableColumn("読み", value: \.entry.reading)
                 TableColumn("語句", value: \.entry.phrase)
