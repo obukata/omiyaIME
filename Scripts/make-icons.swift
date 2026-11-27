@@ -3,7 +3,8 @@ import CoreText
 
 // 入力メニュー（メニューバー）用のアイコンを生成する。素材は利用者・本プロジェクトの自作のみ。
 //   Japanese.tiff:       柴犬（おみや）のドット絵 Bundle/Artwork/omiya-shiba.png から作る。
-//   JapaneseFilled.tiff: 別デザイン omiya-shiba-filled.png（将来、設定で選べるようにする予定。現在は未使用）。
+//   JapaneseFilled.tiff: 別デザイン omiya-shiba-filled.png。設定画面で選ぶと Japanese.tiff に上書きされる。
+//   IconPreview-*.png:   設定画面でアイコンを選ぶときの見本。
 //   Roman.tiff:    角丸の四角から「A」を抜いた形。
 // どちらも16ptのテンプレート画像（1x/2x）で、メニューバーの明暗に合わせてmacOSが色を付ける。
 // 使い方: swift Scripts/make-icons.swift [プレビューPNGの出力先フォルダ]
@@ -72,21 +73,27 @@ func drawLetterBadge(_ letter: String) -> (NSGraphicsContext) -> Void {
     }
 }
 
-let icons: [(String, (NSGraphicsContext) -> Void)] = [
-    ("Japanese", drawArtwork("omiya-shiba.png")),
-    // Alternative design kept for a future icon setting; not referenced by Info.plist yet.
-    ("JapaneseFilled", drawArtwork("omiya-shiba-filled.png")),
-    ("Roman", drawLetterBadge("A")),
+// (TIFF name, drawing, name of the settings preview or nil)
+let icons: [(String, (NSGraphicsContext) -> Void, String?)] = [
+    // Japanese.tiff is what Info.plist names; the app overwrites it with the chosen design (MenuIcon.swift).
+    ("Japanese", drawArtwork("omiya-shiba.png"), nil),
+    ("JapaneseShiba", drawArtwork("omiya-shiba.png"), "shiba"),
+    ("JapaneseFilled", drawArtwork("omiya-shiba-filled.png"), "filled"),
+    ("Roman", drawLetterBadge("A"), nil),
 ]
-for (name, draw) in icons {
+for (name, draw, preview) in icons {
     let reps = [1, 2].map { render(scale: $0, draw) }
     guard let data = NSBitmapImageRep.tiffRepresentationOfImageReps(in: reps, using: .lzw, factor: 0) else {
         fatalError("TIFFを作れませんでした: \(name)")
     }
     try data.write(to: resources.appendingPathComponent("\(name).tiff"))
+    if let preview {
+        // 2x pixels shown at 48pt with nearest-neighbour scaling in the settings window.
+        try render(scale: 2, draw).representation(using: .png, properties: [:])!
+            .write(to: resources.appendingPathComponent("IconPreview-\(preview).png"))
+    }
     if let previewDirectory {
-        let preview = render(scale: 8, draw)
-        try preview.representation(using: .png, properties: [:])!
+        try render(scale: 8, draw).representation(using: .png, properties: [:])!
             .write(to: previewDirectory.appendingPathComponent("\(name).png"))
     }
     print("\(name).tiff")

@@ -16,6 +16,9 @@ struct IMEApplication {
             exit(EXIT_FAILURE)
         }
 
+        // Reapply the chosen menu icon, e.g. after a reinstall restored the default one.
+        MenuIconInstaller.apply(MenuIconInstaller.current)
+
         withExtendedLifetime(server) {
             NSApplication.shared.run()
         }

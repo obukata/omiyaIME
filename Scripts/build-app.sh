@@ -11,7 +11,7 @@ rm -rf "$bundle"
 
 mkdir -p "$bundle/Contents/MacOS" "$bundle/Contents/Resources"
 cp "$project/Bundle/Info.plist" "$bundle/Contents/Info.plist"
-cp "$project/Bundle/Resources/"*.tiff "$bundle/Contents/Resources/"
+cp "$project/Bundle/Resources/"*.tiff "$project/Bundle/Resources/"*.png "$bundle/Contents/Resources/"
 cp -R "$project/Bundle/Resources/"*.lproj "$bundle/Contents/Resources/"
 cp "$bin/omiyaIME" "$bundle/Contents/MacOS/omiyaIME"
 plutil -lint "$bundle/Contents/Info.plist" >&2

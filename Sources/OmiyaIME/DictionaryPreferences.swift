@@ -27,11 +27,12 @@ final class DictionaryPreferences: ObservableObject {
 
     func show() {
         if window == nil {
-            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 520, height: 420),
-                                  styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 720, height: 480),
+                                  styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
                                   backing: .buffered, defer: false)
             window.title = "おみやIMEの設定"
-            window.contentViewController = NSHostingController(rootView: DictionarySettings(model: self))
+            window.toolbarStyle = .unified
+            window.contentViewController = NSHostingController(rootView: SettingsView(model: self))
             window.isReleasedWhenClosed = false
             window.center()
             self.window = window
@@ -66,6 +67,102 @@ final class DictionaryPreferences: ObservableObject {
     }
 }
 
+/// Sidebar layout modelled on macOS System Settings.
+private struct SettingsView: View {
+    enum Pane: String, CaseIterable, Identifiable {
+        case general, dictionary
+        var id: Self { self }
+        var title: String { self == .general ? "一般" : "ユーザ辞書" }
+        var symbol: String { self == .general ? "gearshape" : "book.closed" }
+        var tint: Color { self == .general ? .gray : .orange }
+    }
+
+    @ObservedObject var model: DictionaryPreferences
+    @State private var pane: Pane? = .general
+
+    var body: some View {
+        NavigationSplitView {
+            List(Pane.allCases, selection: $pane) { pane in
+                Label {
+                    Text(pane.title)
+                } icon: {
+                    Image(systemName: pane.symbol)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 20, height: 20)
+                        .background(pane.tint.gradient, in: RoundedRectangle(cornerRadius: 5))
+                }
+            }
+            .navigationSplitViewColumnWidth(min: 180, ideal: 200, max: 240)
+        } detail: {
+            switch pane ?? .general {
+            case .general: GeneralSettings()
+            case .dictionary: DictionarySettings(model: model)
+            }
+        }
+        .frame(minWidth: 640, minHeight: 420)
+    }
+}
+
+private struct GeneralSettings: View {
+    @State private var icon = MenuIconInstaller.current
+
+    var body: some View {
+        Form {
+            Section {
+                HStack(spacing: 16) {
+                    ForEach(MenuIcon.allCases) { option in
+                        IconOption(icon: option, isSelected: icon == option) { icon = option }
+                    }
+                    Spacer()
+                }
+                .padding(.vertical, 4)
+            } header: {
+                Text("入力メニューのアイコン")
+            } footer: {
+                Text("メニューバーと、カーソル下の入力モード表示に使われます。反映まで数秒かかることがあります。")
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .formStyle(.grouped)
+        .navigationTitle("一般")
+        .onChange(of: icon) { _, newValue in MenuIconInstaller.apply(newValue) }
+    }
+}
+
+private struct IconOption: View {
+    let icon: MenuIcon
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 8) {
+                Group {
+                    if let image = icon.preview {
+                        Image(nsImage: image).renderingMode(.template).resizable().interpolation(.none)
+                    } else {
+                        Color.clear
+                    }
+                }
+                .foregroundStyle(.primary)
+                .frame(width: 48, height: 48)
+                .padding(14)
+                .background(.quaternary.opacity(0.6), in: RoundedRectangle(cornerRadius: 10))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 10)
+                        .strokeBorder(isSelected ? Color.accentColor : .clear, lineWidth: 3)
+                }
+                Text(icon.title)
+                    .font(.callout)
+                    .foregroundStyle(isSelected ? .primary : .secondary)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+}
+
 private struct DictionarySettings: View {
     @ObservedObject var model: DictionaryPreferences
     @State private var selection: UserDictionaryEntry?
@@ -76,9 +173,6 @@ private struct DictionarySettings: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("ユーザ辞書")
-                .font(.headline)
-
             Table(model.entries.map(DictionaryRow.init), selection: $selection) {
                 TableColumn("読み", value: \.entry.reading)
                 TableColumn("語句", value: \.entry.phrase)
@@ -105,7 +199,7 @@ private struct DictionarySettings: View {
             }
         }
         .padding(20)
-        .frame(minWidth: 430, minHeight: 340)
+        .navigationTitle("ユーザ辞書")
         .alert("ユーザ辞書", isPresented: Binding(
             get: { model.errorMessage != nil },
             set: { if !$0 { model.errorMessage = nil } }
