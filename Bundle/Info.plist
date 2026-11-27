@@ -19,7 +19,7 @@
 	<key>CFBundleShortVersionString</key>
 	<string>0.1.0</string>
 	<key>CFBundleVersion</key>
-	<string>5</string>
+	<string>6</string>
 	<key>ComponentInputModeDict</key>
 	<dict>
 		<key>tsInputModeListKey</key>
@@ -38,7 +38,7 @@
 				<key>TISIntendedLanguage</key>
 				<string>ja</string>
 				<key>tsInputModeAlternateMenuIconFileKey</key>
-				<string>Hiragana.tiff</string>
+				<string>Japanese.tiff</string>
 				<key>tsInputModeDefaultStateKey</key>
 				<true/>
 				<key>tsInputModeIsVisibleKey</key>
@@ -48,9 +48,9 @@
 				<key>tsInputModeKeyEquivalentModifiersKey</key>
 				<integer>4608</integer>
 				<key>tsInputModeMenuIconFileKey</key>
-				<string>Hiragana.tiff</string>
+				<string>Japanese.tiff</string>
 				<key>tsInputModePaletteIconFileKey</key>
-				<string>Hiragana.tiff</string>
+				<string>Japanese.tiff</string>
 				<key>tsInputModePrimaryInScriptKey</key>
 				<true/>
 				<key>tsInputModeScriptKey</key>
@@ -116,6 +116,6 @@
 		<string>Latn</string>
 	</array>
 	<key>tsInputMethodIconFileKey</key>
-	<string>Hiragana.tiff</string>
+	<string>Japanese.tiff</string>
 </dict>
 </plist>
