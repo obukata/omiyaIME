@@ -105,7 +105,7 @@ private final class CandidateListView: NSView {
             }
             let textColor: NSColor = isSelected ? .alternateSelectedControlTextColor : .labelColor
             if index > 0, !isSelected, index - 1 != selectedRow {
-                NSColor.separatorColor.setFill()
+                NSColor.tertiaryLabelColor.withAlphaComponent(0.6).setFill()
                 NSRect(x: row.minX + 9, y: row.minY - 0.25, width: row.width - 18, height: 0.5).fill()
             }
             let labelColor: NSColor = isSelected
