@@ -95,7 +95,7 @@ final class InputController: IMKInputController, @unchecked Sendable {
         guard Thread.isMainThread else { return nil }
         return MainActor.assumeIsolated {
             let menu = NSMenu()
-            let item = NSMenuItem(title: "omiyaIMEの設定…", action: #selector(showPreferences(_:)), keyEquivalent: "")
+            let item = NSMenuItem(title: "おみやIMEの設定…", action: #selector(showPreferences(_:)), keyEquivalent: "")
             item.target = self
             menu.addItem(item)
             return MainThreadMenu(menu)

@@ -30,15 +30,18 @@ final class DictionaryPreferences: ObservableObject {
             let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 520, height: 420),
                                   styleMask: [.titled, .closable, .miniaturizable, .resizable],
                                   backing: .buffered, defer: false)
-            window.title = "omiyaIMEの設定"
+            window.title = "おみやIMEの設定"
             window.contentViewController = NSHostingController(rootView: DictionarySettings(model: self))
             window.isReleasedWhenClosed = false
             window.center()
             self.window = window
         }
         NSApp.setActivationPolicy(.accessory)
+        // The input method is never the frontmost app, so a cooperative activate() request is
+        // ignored and the window opened behind the current app (2026-11-27, macOS 26.5.2).
+        NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
-        NSApp.activate()
+        window?.orderFrontRegardless()
     }
 
     @discardableResult

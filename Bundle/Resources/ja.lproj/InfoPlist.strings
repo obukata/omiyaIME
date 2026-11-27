@@ -1,4 +1,4 @@
-"CFBundleName" = "omiyaIME";
-"CFBundleDisplayName" = "omiyaIME";
+"CFBundleName" = "おみやIME";
+"CFBundleDisplayName" = "おみやIME";
 "com.apple.inputmethod.Japanese" = "ひらがな（おみや）";
-"com.apple.inputmethod.Roman" = "omiyaIME（英字）";
+"com.apple.inputmethod.Roman" = "英字（おみや）";

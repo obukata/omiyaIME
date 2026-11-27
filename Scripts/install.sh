@@ -37,5 +37,5 @@ swift "$project/Scripts/register-input-source.swift" --install-path "$dest" --en
 killall TextInputMenuAgent 2>/dev/null || true
 # カーソル下の入力モード表示（青い丸）は古い表示内容を持ち続けるため再起動する（必要時に自動で起動し直す）
 killall -9 CursorUIViewService TextInputSwitcher 2>/dev/null || true
-echo "完了しました。メニューバーの入力メニューから omiyaIME を選んでください。"
+echo "完了しました。メニューバーの入力メニューから「ひらがな（おみや）」を選んでください。"
 echo "表示されない場合は一度ログアウトしてログインし直してください。"
