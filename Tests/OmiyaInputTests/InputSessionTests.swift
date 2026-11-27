@@ -4,7 +4,7 @@ import OmiyaInput
 final class InputSessionTests: XCTestCase {
     func testCommonRomajiAndAliases() {
         let examples = [
-            ("kyou", "きょう"), ("gakkou", "がっこう"), ("konnichiha", "こんにちは"),
+            ("kyou", "きょう"), ("gakkou", "がっこう"), ("konnnichiha", "こんにちは"), ("funniki", "ふんいき"), ("konnyaku", "こんやく"),
             ("kan'i", "かんい"), ("kon", "こん"), ("nyu-su", "にゅーす"),
             ("matcha", "まっちゃ"), ("zhzjzkzl", "←↓↑→"), ("ti", "ち"), ("fa", "ふぁ"), ("xyo", "ょ")
         ]
