@@ -2,7 +2,8 @@ import AppKit
 import CoreText
 
 // 入力メニュー（メニューバー）用のアイコンを生成する。素材は利用者・本プロジェクトの自作のみ。
-//   Japanese.tiff: 柴犬（おみや）のドット絵 Bundle/Artwork/omiya-shiba.png から作る。
+//   Japanese.tiff:       柴犬（おみや）のドット絵 Bundle/Artwork/omiya-shiba.png から作る。
+//   JapaneseFilled.tiff: 別デザイン omiya-shiba-filled.png（将来、設定で選べるようにする予定。現在は未使用）。
 //   Roman.tiff:    角丸の四角から「A」を抜いた形。
 // どちらも16ptのテンプレート画像（1x/2x）で、メニューバーの明暗に合わせてmacOSが色を付ける。
 // 使い方: swift Scripts/make-icons.swift [プレビューPNGの出力先フォルダ]
@@ -28,10 +29,10 @@ func render(scale: Int, _ draw: (NSGraphicsContext) -> Void) -> NSBitmapImageRep
     return rep
 }
 
-/// Draws Bundle/Artwork/omiya-shiba.png (the owner's AI-generated pixel art of Omiya), trimmed to its
+/// Draws an image from Bundle/Artwork (the owner's AI-generated pixel art of Omiya), trimmed to its
 /// visible pixels and fitted to the icon. Only its alpha matters: the icon is a template image.
-func drawArtwork(_ context: NSGraphicsContext) {
-    let url = resources.deletingLastPathComponent().appendingPathComponent("Artwork/omiya-shiba.png")
+func drawArtwork(_ file: String) -> (NSGraphicsContext) -> Void { { context in
+    let url = resources.deletingLastPathComponent().appendingPathComponent("Artwork/\(file)")
     guard let source = NSBitmapImageRep(data: (try? Data(contentsOf: url)) ?? Data()) else {
         fatalError("画像を読めませんでした: \(url.path)")
     }
@@ -51,7 +52,7 @@ func drawArtwork(_ context: NSGraphicsContext) {
     image.addRepresentation(source)
     image.draw(in: NSRect(x: (points - width) / 2, y: (points - height) / 2, width: width, height: height),
                from: crop, operation: .sourceOver, fraction: 1)
-}
+} }
 
 /// Rounded badge with the letter cut out, centred on the glyph's own outline.
 func drawLetterBadge(_ letter: String) -> (NSGraphicsContext) -> Void {
@@ -71,7 +72,12 @@ func drawLetterBadge(_ letter: String) -> (NSGraphicsContext) -> Void {
     }
 }
 
-let icons: [(String, (NSGraphicsContext) -> Void)] = [("Japanese", drawArtwork), ("Roman", drawLetterBadge("A"))]
+let icons: [(String, (NSGraphicsContext) -> Void)] = [
+    ("Japanese", drawArtwork("omiya-shiba.png")),
+    // Alternative design kept for a future icon setting; not referenced by Info.plist yet.
+    ("JapaneseFilled", drawArtwork("omiya-shiba-filled.png")),
+    ("Roman", drawLetterBadge("A")),
+]
 for (name, draw) in icons {
     let reps = [1, 2].map { render(scale: $0, draw) }
     guard let data = NSBitmapImageRep.tiffRepresentationOfImageReps(in: reps, using: .lzw, factor: 0) else {
