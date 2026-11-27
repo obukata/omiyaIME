@@ -1,7 +1,11 @@
 import AppKit
+import OmiyaWalkCore
 import QuartzCore
 
 /// Omiya's round stage: he walks in the middle and the street scrolls behind him.
+/// Normally only Omiya shows and clicks pass through to the windows below. Resting the
+/// pointer on him for a moment shows the whole stage, which then takes clicks until the
+/// pointer leaves it.
 /// The circle has a dotted white rim with a black shadow, a status plate overlaps its lower part,
 /// and a gear button sits on the rim at the upper right. There is no window frame.
 @MainActor
@@ -33,13 +37,18 @@ public final class WalkView: NSView {
         public var streetSidewalk: CGFloat = 592
         public var walkSpeed: CGFloat = 22
         public var framesPerSecond: Double = 6
+        /// How long the pointer rests on Omiya before the stage opens.
+        public var revealDelay: Double = 0.5
+        /// How long the pointer stays away before the stage closes again.
+        public var hideDelay: Double = 0.4
+        public var fadeDuration: Double = 0.2
         public init() {}
 
         var diameter: CGFloat { CGFloat(diameterDots) * dot }
         var shadow: CGFloat { CGFloat(shadowDots) * dot }
     }
 
-    /// What the plate under the circle shows. The prototype uses made-up values.
+    /// What the plate under the circle shows.
     public struct Status: Sendable {
         public var distance: String
         public var place: String
@@ -47,10 +56,14 @@ public final class WalkView: NSView {
             self.distance = distance
             self.place = place
         }
-        public static let sample = Status(distance: "1,234.5 km", place: "大阪")
+        /// The place is fixed for now; places that change with distance are still to be decided.
+        public static func walked(_ progress: WalkProgress) -> Status {
+            Status(distance: progress.distanceText, place: "大阪")
+        }
     }
 
-    public var status = Status.sample { didSet { drawStatus() } }
+    public var status = Status.walked(WalkProgress()) { didSet { drawStatus() } }
+    public private(set) var isExpanded = false
     /// Shown when the gear is clicked.
     public var gearMenu: NSMenu? {
         get { gear.menuToShow }
@@ -65,6 +78,16 @@ public final class WalkView: NSView {
     private let plate = CALayer()
     private let plateShadow = CALayer()
     private let gear = GearButton()
+    /// Parts shown only while the stage is open.
+    private let below = CALayer()
+    private let above = CALayer()
+    private var circleFrame = CGRect.zero
+    private var gearFrame = CGRect.zero
+    private var hoverStart: CFTimeInterval?
+    private var leaveStart: CFTimeInterval?
+    private let progressFile: WalkProgressFile?
+    private var progressDate: Date?
+    private var lastProgressCheck: CFTimeInterval = 0
     private let walkFrames: [CGImage]
     private var streetLoopWidth: CGFloat = 0
     private var offset: CGFloat = 0
@@ -77,13 +100,16 @@ public final class WalkView: NSView {
                height: layout.margin + layout.diameter + layout.shadow + layout.margin)
     }
 
-    public init(layout: Layout = Layout()) {
+    /// `progressFile` is read about once a second for the distance; nil shows 0.
+    public init(layout: Layout = Layout(), progressFile: WalkProgressFile? = WalkProgressFile()) {
         self.layout = layout
+        self.progressFile = progressFile
         walkFrames = (0..<4).compactMap { WalkArt.image(named: "walk_\($0)") }
         super.init(frame: CGRect(origin: .zero, size: Self.size(for: layout)))
         wantsLayer = true
         setUpLayers()
-        drawStatus()
+        if let progressFile { status = .walked(progressFile.load()) } else { drawStatus() }
+        setExpanded(false, animated: false)
     }
 
     @available(*, unavailable)
@@ -107,10 +133,15 @@ public final class WalkView: NSView {
 
         let side = layout.diameter, m = layout.margin, n = layout.diameterDots
         let circle = CGRect(x: m, y: m, width: side, height: side)
+        circleFrame = circle
+        for group in [below, above] {
+            group.frame = scene.bounds
+        }
+        scene.addSublayer(below)
 
         // Black shadow: the same disc, a few dots lower.
         let shade = PixelArt.RGBA(r: 0, g: 0, b: 0, a: 110)
-        scene.addSublayer(pixelLayer(PixelArt.disc(n, color: shade), frame: circle.offsetBy(dx: 0, dy: layout.shadow)))
+        below.addSublayer(pixelLayer(PixelArt.disc(n, color: shade), frame: circle.offsetBy(dx: 0, dy: layout.shadow)))
 
         content.frame = circle
         content.masksToBounds = true
@@ -140,14 +171,15 @@ public final class WalkView: NSView {
         dog.contents = walkFrames.first
         content.addSublayer(dog)
 
-        scene.addSublayer(pixelLayer(PixelArt.ring(n, thickness: layout.rimDots, color: PixelArt.white), frame: circle))
+        scene.addSublayer(above)
+        above.addSublayer(pixelLayer(PixelArt.ring(n, thickness: layout.rimDots, color: PixelArt.white), frame: circle))
 
         plateShadow.backgroundColor = CGColor(gray: 0, alpha: 110.0 / 255)
         plateShadow.mask = pixelLayer(nil, frame: .zero)
-        scene.addSublayer(plateShadow)
+        above.addSublayer(plateShadow)
         plate.magnificationFilter = .nearest
         plate.contentsGravity = .resize
-        scene.addSublayer(plate)
+        above.addSublayer(plate)
 
         // The gear is drawn in the scene; a clear view on top of it takes the clicks.
         let gearSide = 18 * layout.dot
@@ -155,7 +187,8 @@ public final class WalkView: NSView {
         let gearCenter = CGPoint(x: m + side / 2 + side / 2 * cos(angle), y: m + side / 2 - side / 2 * sin(angle))
         let gearFrame = CGRect(x: (gearCenter.x - gearSide / 2).rounded(), y: (gearCenter.y - gearSide / 2).rounded(),
                                width: gearSide, height: gearSide)
-        scene.addSublayer(pixelLayer(PixelArt.gear(), frame: gearFrame))
+        self.gearFrame = gearFrame
+        above.addSublayer(pixelLayer(PixelArt.gear(), frame: gearFrame))
         gear.frame = CGRect(x: gearFrame.minX, y: bounds.height - gearFrame.maxY, width: gearSide, height: gearSide)
         addSubview(gear)
     }
@@ -181,6 +214,7 @@ public final class WalkView: NSView {
         super.viewDidMoveToWindow()
         timer?.invalidate()
         guard window != nil else { return }
+        window?.ignoresMouseEvents = !isExpanded
         let timer = Timer(timeInterval: 1.0 / 60, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.tick() }
         }
@@ -205,6 +239,69 @@ public final class WalkView: NSView {
         let delta = lastTick.map { now - $0 } ?? 0
         lastTick = now
         advance(by: delta)
+        followPointer(now: now)
+        if now - lastProgressCheck >= 1 {
+            lastProgressCheck = now
+            reloadProgress()
+        }
+    }
+
+    /// Opens or closes the stage. Closed, only Omiya shows and clicks pass through.
+    public func setExpanded(_ expanded: Bool, animated: Bool) {
+        isExpanded = expanded
+        window?.ignoresMouseEvents = !expanded
+        gear.isHidden = !expanded
+        CATransaction.begin()
+        CATransaction.setAnimationDuration(animated ? layout.fadeDuration : 0)
+        CATransaction.setDisableActions(!animated)
+        for part in [below, street, above] {
+            part.opacity = expanded ? 1 : 0
+        }
+        CATransaction.commit()
+    }
+
+    /// Where the pointer is, in scene coordinates (origin at the top left), or nil.
+    private func pointerInScene() -> CGPoint? {
+        guard let window else { return nil }
+        let inView = convert(window.convertPoint(fromScreen: NSEvent.mouseLocation), from: nil)
+        return CGPoint(x: inView.x, y: bounds.height - inView.y)
+    }
+
+    private func followPointer(now: CFTimeInterval) {
+        guard let point = pointerInScene() else { return }
+        if isExpanded {
+            let r = circleFrame.width / 2
+            let dx = point.x - circleFrame.midX, dy = point.y - circleFrame.midY
+            let inside = dx * dx + dy * dy <= r * r || plate.frame.contains(point)
+                || gearFrame.insetBy(dx: -4, dy: -4).contains(point) || gear.isShowingMenu
+            if inside {
+                leaveStart = nil
+            } else if let start = leaveStart {
+                if now - start >= layout.hideDelay { leaveStart = nil; setExpanded(false, animated: true) }
+            } else {
+                leaveStart = now
+            }
+        } else {
+            // Omiya's own body, not the whole sprite frame.
+            let body = dog.frame.offsetBy(dx: content.frame.minX, dy: content.frame.minY).insetBy(dx: 18, dy: 12)
+            if body.contains(point) {
+                if let start = hoverStart {
+                    if now - start >= layout.revealDelay { hoverStart = nil; setExpanded(true, animated: true) }
+                } else {
+                    hoverStart = now
+                }
+            } else {
+                hoverStart = nil
+            }
+        }
+    }
+
+    private func reloadProgress() {
+        guard let progressFile else { return }
+        let date = progressFile.modificationDate
+        guard date != progressDate else { return }
+        progressDate = date
+        status = .walked(progressFile.load())
     }
 
     /// Moves the walk forward by `delta` seconds.
@@ -227,6 +324,7 @@ public final class WalkView: NSView {
 @MainActor
 final class GearButton: NSView {
     var menuToShow: NSMenu?
+    private(set) var isShowingMenu = false
 
     init() {
         super.init(frame: .zero)
@@ -239,7 +337,9 @@ final class GearButton: NSView {
     override var mouseDownCanMoveWindow: Bool { false }
 
     override func mouseDown(with event: NSEvent) {
+        isShowingMenu = true
         menuToShow?.popUp(positioning: nil, at: CGPoint(x: 0, y: -4), in: self)
+        isShowingMenu = false
     }
 }
 

@@ -1,5 +1,6 @@
 import AppKit
 import OmiyaWalk
+import OmiyaWalkCore
 
 // Prototype viewer: shows Omiya on the desktop without installing the input method.
 // Drag him to move. Right-click for 終了.
@@ -24,12 +25,17 @@ final class PreviewDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
-// Development option: `--snapshot out.png [seconds]` writes one picture and exits.
+// Development option: `--snapshot out.png [seconds] [steps]` writes the open stage as one picture
+// and exits. With `steps`, the distance shows that many steps instead of the saved total.
 if let index = CommandLine.arguments.firstIndex(of: "--snapshot"), index + 1 < CommandLine.arguments.count {
     let path = CommandLine.arguments[index + 1]
     let seconds = CommandLine.arguments.count > index + 2 ? Double(CommandLine.arguments[index + 2]) ?? 0 : 0
     MainActor.assumeIsolated {
-        let view = WalkView()
+        let args = CommandLine.arguments
+        let steps = args.count > index + 3 ? Int(args[index + 3]) : nil
+        let view = WalkView(progressFile: steps == nil ? WalkProgressFile() : nil)
+        if let steps { view.status = .walked(WalkProgress(steps: steps)) }
+        if args.contains("--closed") { view.setExpanded(false, animated: false) } else { view.setExpanded(true, animated: false) }
         view.advance(by: seconds)
         if let data = view.snapshotPNG() { try? data.write(to: URL(fileURLWithPath: path)) }
     }

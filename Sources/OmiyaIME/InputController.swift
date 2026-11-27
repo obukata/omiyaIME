@@ -2,6 +2,7 @@ import AppKit
 import Carbon
 import InputMethodKit
 import OmiyaInput
+import OmiyaWalkCore
 
 @objc(OmiyaInputController)
 final class InputController: IMKInputController, @unchecked Sendable {
@@ -71,6 +72,8 @@ final class InputController: IMKInputController, @unchecked Sendable {
         guard Thread.isMainThread, let event, event.type == .keyDown,
               let client = sender as? any IMKTextInput
         else { return false }
+        // おみや君の散歩: one press is one step. Only the count is kept, never the key.
+        if !event.isARepeat { MainActor.assumeIsolated { WalkStepCounter.shared.recordStep() } }
         if let target = Self.modeKey(for: event) {
             _ = apply(session.switchModeByKey(to: target), to: client)
             client.selectMode(target == .japanese ? Self.japaneseSourceID : Self.romanSourceID)
@@ -94,6 +97,7 @@ final class InputController: IMKInputController, @unchecked Sendable {
     override func deactivateServer(_ sender: Any!) {
         guard Thread.isMainThread else { return }
         hideCandidates()
+        MainActor.assumeIsolated { WalkStepCounter.shared.flush() }
         super.deactivateServer(sender)
     }
 

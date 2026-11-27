@@ -10,10 +10,12 @@ let package = Package(
     ],
     targets: [
         .target(name: "OmiyaInput"),
-        .target(name: "OmiyaWalk", resources: [.copy("Resources")]),
-        .executableTarget(name: "OmiyaWalkPreview", dependencies: ["OmiyaWalk"]),
-        .executableTarget(name: "OmiyaIME", dependencies: ["OmiyaInput"]),
+        .target(name: "OmiyaWalkCore"),
+        .target(name: "OmiyaWalk", dependencies: ["OmiyaWalkCore"], resources: [.copy("Resources")]),
+        .executableTarget(name: "OmiyaWalkPreview", dependencies: ["OmiyaWalk", "OmiyaWalkCore"]),
+        .executableTarget(name: "OmiyaIME", dependencies: ["OmiyaInput", "OmiyaWalkCore"]),
         .testTarget(name: "OmiyaInputTests", dependencies: ["OmiyaInput"]),
+        .testTarget(name: "OmiyaWalkTests", dependencies: ["OmiyaWalkCore"]),
         .testTarget(name: "OmiyaIMETests", dependencies: ["OmiyaIME", "OmiyaInput"])
     ]
 )
