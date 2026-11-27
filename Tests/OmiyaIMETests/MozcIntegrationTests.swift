@@ -77,4 +77,20 @@ final class MozcIntegrationTests: XCTestCase {
         }
         XCTAssertFalse(listed.visibleCandidates.contains("☔"))
     }
+
+    func testMixedEnglishAndKanaReadingConverts() throws {
+        guard let path = ProcessInfo.processInfo.environment["OMIYAIME_TEST_BUNDLE"] else {
+            throw XCTSkip("Set OMIYAIME_TEST_BUNDLE to a development app with Mozc.")
+        }
+        let converter = try XCTUnwrap(MozcConverter(bundle: try XCTUnwrap(Bundle(path: path))))
+        var session = InputSession(converter: converter)
+        for key in "IME" { _ = session.handle(.text(String(key))) }
+        _ = session.switchModeByKey(to: .japanese)
+        for key in "nokikai" { _ = session.handle(.text(String(key))) }
+        guard case .markConversion(let converted) = session.handle(.space) else {
+            return XCTFail("Mixed text should convert")
+        }
+        XCTAssertTrue(converted.text.hasPrefix("IME"), converted.text)
+        XCTAssertTrue(converted.text.contains("機会"), converted.text)
+    }
 }

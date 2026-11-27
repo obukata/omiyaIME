@@ -1,6 +1,8 @@
 struct Romaji {
     private(set) var pending = ""
     private(set) var kana = ""
+    /// Text up to this many characters was typed as English and must never be read as romaji again.
+    private var literalEnd = 0
 
     var isEmpty: Bool { kana.isEmpty && pending.isEmpty }
 
@@ -18,6 +20,13 @@ struct Romaji {
     mutating func appendLetter(_ letter: Character) {
         pending.append(letter)
         resolve(final: false)
+    }
+
+    /// Appends English text typed in English mode, kept exactly as typed.
+    mutating func appendLiteral(_ text: String) {
+        finalizePending()
+        kana += text
+        literalEnd = kana.count
     }
 
     mutating func finalizePending() {
@@ -49,8 +58,9 @@ struct Romaji {
         }
         // Letters left over from an earlier unresolved spelling become editable romaji again,
         // so "t" followed by "e" still makes て.
+        literalEnd = min(literalEnd, kana.count)
         guard pending.isEmpty else { return }
-        while let last = kana.last, last.isASCII, last.isLetter {
+        while kana.count > literalEnd, let last = kana.last, last.isASCII, last.isLetter {
             pending.insert(last, at: pending.startIndex)
             kana.removeLast()
         }

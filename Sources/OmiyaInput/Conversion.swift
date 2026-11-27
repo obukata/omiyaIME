@@ -35,8 +35,10 @@ enum CandidatePolicy {
     static func ranked(_ segment: ConversionSegment) -> [String] {
         var seen = Set<String>()
         let user = segment.userCandidates.filter { isAllowedUserPhrase($0) && seen.insert($0).inserted }
-        let converted = (segment.candidates + [segment.reading]).filter { isAllowed($0) && seen.insert($0).inserted }
-        return user + converted
+        let converted = segment.candidates.filter { isAllowed($0) && seen.insert($0).inserted }
+        // The reading itself is what the user typed, English letters included (e.g. "IME" typed after Shift).
+        let reading = isAllowedUserPhrase(segment.reading) && seen.insert(segment.reading).inserted ? [segment.reading] : []
+        return user + converted + reading
     }
 
     /// Words the user registered: English text such as an e-mail address is the user's own choice and

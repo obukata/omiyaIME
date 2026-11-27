@@ -65,6 +65,15 @@ final class ConversionTests: XCTestCase {
         XCTAssertTrue(session.handle(.enter) == .passThrough)
     }
 
+    func testModeSwitchCommitsAnActiveConversion() {
+        var session = preparedSession(FixtureConverter())
+        guard case .markConversion(let conversion) = session.handle(.space) else {
+            return XCTFail("Space should convert")
+        }
+        XCTAssertTrue(session.switchModeByKey(to: .english) == .commit(conversion.text))
+        XCTAssertTrue(session.handle(.text("a")) == .passThrough)
+    }
+
     func testFilteringAndStablePriorityAcrossAllCandidateSources() {
         let segment = ConversionSegment(
             reading: "よみ",

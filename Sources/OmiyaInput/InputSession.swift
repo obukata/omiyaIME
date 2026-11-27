@@ -36,10 +36,6 @@ public struct InputSession {
     private var katakana = false
     private let converter: (any KanaKanjiConverter)?
     private var conversion: ActiveConversion?
-    /// English text typed after Shift+letter in Japanese mode, kept marked until committed.
-    private var latin = ""
-
-    private var isComposing: Bool { !romaji.isEmpty || !latin.isEmpty }
 
     public init(converter: (any KanaKanjiConverter)? = nil) {
         self.converter = converter
@@ -49,33 +45,37 @@ public struct InputSession {
     /// not discarded: cancelling lost text typed before pressing かな (2026-11-27 report).
     public mutating func changeMode(to mode: Mode) -> Action {
         guard mode != self.mode else { return .passThrough }
-        self.mode = mode
-        return finishComposition()
+        return switchModeByKey(to: mode)
     }
 
-    /// Switches mode from the keyboard (JIS かな / 英数 keys). Like the standard IME, pending text is committed.
+    /// Switches mode (JIS かな / 英数 keys, input menu). Like the standard IME, unconverted text stays
+    /// marked so typing continues in the new mode (2026-11-27 user answer); an active conversion is committed.
     public mutating func switchModeByKey(to mode: Mode) -> Action {
         self.mode = mode
-        return finishComposition()
+        if conversion != nil { return finishComposition() }
+        guard !romaji.isEmpty else { return .passThrough }
+        if mode == .english { romaji.finalizePending() }
+        return .mark(display(romaji.markedText))
     }
 
     public mutating func finishComposition() -> Action {
-        guard isComposing else { return .passThrough }
-        let text = !latin.isEmpty ? latin : conversion?.text ?? display(romaji.resolvedText)
+        guard !romaji.isEmpty else { return .passThrough }
+        let text = conversion?.text ?? display(romaji.resolvedText)
         reset()
         return .commit(text)
     }
 
     public mutating func handle(_ key: Key) -> Action {
-        guard mode == .japanese else { return latin.isEmpty ? .passThrough : handleLatin(key) }
+        guard mode == .japanese else { return romaji.isEmpty ? .passThrough : handleEnglishComposition(key) }
 
-        // Like the macOS Japanese IME: Shift+letter switches to English and starts marked English text.
+        // Like the macOS Japanese IME: Shift+letter switches to English and continues the marked text.
         if case .text(let text) = key, let scalar = Self.asciiInput(text), (0x41...0x5A).contains(scalar.value) {
-            let committed = finishComposition()
+            let committed = conversion != nil ? finishComposition() : .passThrough
             mode = .english
-            latin = text
-            if case .commit(let previous) = committed { return .commitAndMark(previous, text) }
-            return .mark(text)
+            romaji.appendLiteral(text)
+            let marked = display(romaji.markedText)
+            if case .commit(let previous) = committed { return .commitAndMark(previous, marked) }
+            return .mark(marked)
         }
 
         if conversion != nil {
@@ -131,27 +131,25 @@ public struct InputSession {
         return conversion.map { .markConversion($0.presentation) } ?? .passThrough
     }
 
-    private mutating func handleLatin(_ key: Key) -> Action {
+    /// English mode while marked text remains (after Shift+letter or a mode switch mid-input).
+    private mutating func handleEnglishComposition(_ key: Key) -> Action {
         switch key {
         case .text(let text) where Self.asciiInput(text) != nil:
-            latin += text
-            return .mark(latin)
+            romaji.appendLiteral(text)
         case .space:
-            let text = latin + " "
-            latin = ""
-            return .commit(text)
+            romaji.appendLiteral(" ")
         case .enter:
             return finishComposition()
         case .delete:
-            latin.removeLast()
-            return .mark(latin)
+            romaji.deleteLast()
+            if romaji.isEmpty { katakana = false }
         case .escape:
             return cancelComposition()
         default:
-            let text = latin
-            latin = ""
+            guard case .commit(let text) = finishComposition() else { return .passThrough }
             return .commitThenPassThrough(text)
         }
+        return .mark(display(romaji.markedText))
     }
 
     private mutating func navigateConversion(_ key: Key) -> Action {
@@ -205,14 +203,13 @@ public struct InputSession {
     }
 
     private mutating func cancelComposition() -> Action {
-        guard isComposing else { return .passThrough }
+        guard !romaji.isEmpty else { return .passThrough }
         reset()
         return .mark("")
     }
 
     private mutating func reset() {
         romaji = Romaji()
-        latin = ""
         katakana = false
         conversion = nil
     }

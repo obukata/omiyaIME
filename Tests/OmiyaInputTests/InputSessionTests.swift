@@ -48,17 +48,13 @@ final class InputSessionTests: XCTestCase {
     func testShiftLetterSwitchesToEnglishWithMarkedText() {
         var session = InputSession()
         XCTAssertTrue(type("kana", in: &session) == .mark("かな"))
-        XCTAssertTrue(session.handle(.text("A")) == .commitAndMark("かな", "A"))
+        XCTAssertTrue(session.handle(.text("A")) == .mark("かなA"))
         XCTAssertEqual(session.mode, .english)
-        XCTAssertTrue(type("pple", in: &session) == .mark("Apple"))
-        XCTAssertTrue(session.handle(.delete) == .mark("Appl"))
-        XCTAssertTrue(session.handle(.enter) == .commit("Appl"))
+        XCTAssertTrue(type("pple", in: &session) == .mark("かなApple"))
+        XCTAssertTrue(session.handle(.space) == .mark("かなApple "))
+        XCTAssertTrue(session.handle(.delete) == .mark("かなApple"))
+        XCTAssertTrue(session.handle(.enter) == .commit("かなApple"))
         XCTAssertTrue(session.handle(.text("x")) == .passThrough)
-
-        var spaced = InputSession()
-        XCTAssertTrue(spaced.handle(.text("I")) == .mark("I"))
-        XCTAssertTrue(spaced.handle(.space) == .commit("I "))
-        XCTAssertTrue(spaced.handle(.space) == .passThrough)
 
         var other = InputSession()
         _ = other.handle(.text("O"))
@@ -66,12 +62,26 @@ final class InputSessionTests: XCTestCase {
         _ = other.switchModeByKey(to: .japanese)
         _ = other.handle(.text("Q"))
         XCTAssertTrue(other.handle(.escape) == .mark(""))
-        XCTAssertTrue(other.switchModeByKey(to: .japanese) == .passThrough)
+    }
 
-        // The system may switch the mode itself (e.g. the かな key); the English text is kept.
-        var system = InputSession()
-        _ = type("IME", in: &system)
-        XCTAssertTrue(system.changeMode(to: .japanese) == .commit("IME"))
+    func testModeSwitchKeepsMarkedTextAndContinues() {
+        var session = InputSession()
+        XCTAssertTrue(type("IME", in: &session) == .mark("IME"))
+        // かな key, or macOS switching the mode itself: the text stays marked.
+        XCTAssertTrue(session.switchModeByKey(to: .japanese) == .mark("IME"))
+        XCTAssertTrue(type("desu", in: &session) == .mark("IMEです"))
+        XCTAssertTrue(session.changeMode(to: .english) == .mark("IMEです"))
+        XCTAssertTrue(type("ok", in: &session) == .mark("IMEですok"))
+        XCTAssertTrue(session.changeMode(to: .japanese) == .mark("IMEですok"))
+        // English letters never turn back into romaji, even after deleting.
+        XCTAssertTrue(session.handle(.delete) == .mark("IMEですo"))
+        XCTAssertTrue(type("a", in: &session) == .mark("IMEですoあ"))
+        XCTAssertTrue(session.handle(.enter) == .commit("IMEですoあ"))
+
+        var pending = InputSession()
+        _ = type("k", in: &pending)
+        XCTAssertTrue(pending.switchModeByKey(to: .english) == .mark("k"))
+        XCTAssertTrue(type("a", in: &pending) == .mark("ka"))
     }
 
     func testBracketsBecomeJapaneseQuotes() {
@@ -111,9 +121,8 @@ final class InputSessionTests: XCTestCase {
 
     func testEnglishModeLetsHostHandleInput() {
         var session = InputSession()
-        _ = type("kana", in: &session)
         XCTAssertTrue(session.changeMode(to: .japanese) == .passThrough)
-        XCTAssertTrue(session.changeMode(to: .english) == .commit("かな"))
+        XCTAssertTrue(session.changeMode(to: .english) == .passThrough)
         XCTAssertTrue(session.handle(.text("a")) == .passThrough)
         XCTAssertTrue(session.handle(.text("9")) == .passThrough)
         XCTAssertTrue(session.handle(.space) == .passThrough)
@@ -144,12 +153,12 @@ final class InputSessionTests: XCTestCase {
         text.reduce(.passThrough) { _, key in session.handle(.text(String(key))) }
     }
 
-    func testModeKeysCommitPendingTextAndSwitch() {
-        var session = InputSession()
-        _ = session.handle(.text("k"))
-        _ = session.handle(.text("a"))
-        XCTAssertTrue(session.switchModeByKey(to: .english) == .commit("か"))
+    func testModeKeysKeepUnconvertedText() {
+        var session = InputSession(converter: nil)
+        _ = type("ka", in: &session)
+        XCTAssertTrue(session.switchModeByKey(to: .english) == .mark("か"))
         XCTAssertTrue(session.mode == .english)
+        XCTAssertTrue(session.handle(.enter) == .commit("か"))
         XCTAssertTrue(session.handle(.text("a")) == .passThrough)
         XCTAssertTrue(session.switchModeByKey(to: .japanese) == .passThrough)
         XCTAssertTrue(session.handle(.text("a")) == .mark("あ"))
