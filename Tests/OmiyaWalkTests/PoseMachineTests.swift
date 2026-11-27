@@ -55,4 +55,13 @@ final class PoseMachineTests: XCTestCase {
         XCTAssertEqual(machine.update(at: 500).frame, .sit(0))
         XCTAssertEqual(machine.update(at: 500 + 4.0 / 8).frame, .sleep(0))
     }
+
+    func testHuffsNowAndThenWhileSitting() {
+        var machine = PoseMachine(now: 0, random: { _ in 10 })
+        XCTAssertEqual(machine.update(at: 0).frame, .sit(3))
+        XCTAssertEqual(machine.update(at: 9.9).frame, .sit(3))
+        XCTAssertEqual(machine.update(at: 10.2).frame, .sit(4))
+        XCTAssertEqual(machine.update(at: 10.7).frame, .sit(3))
+        XCTAssertEqual(machine.update(at: 20.8).frame, .sit(4))
+    }
 }

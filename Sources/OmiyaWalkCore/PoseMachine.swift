@@ -43,11 +43,14 @@ public struct PoseMachine: Sendable {
         public var sitDownFramesPerSecond: Double = 8
         public var lieDownFramesPerSecond: Double = 6
         public var getUpFramesPerSecond: Double = 12
+        /// While sitting, he huffs (`sit_4`) now and then: every 8–20 seconds, for 0.6 seconds.
+        public var huffEvery: ClosedRange<Double> = 8...20
+        public var huffDuration: Double = 0.6
         public init() {}
     }
 
     static let walkFrameCount = 4
-    /// `sit_0`…`sit_3` go from standing to sitting. `sit_4` (a small huff) is not used yet.
+    /// `sit_0`…`sit_3` go from standing to sitting. `sit_4` is a small huff while sitting.
     static let sitDown: [Frame] = (0...3).map(Frame.sit)
     static let lieDown: [Frame] = (0...5).map(Frame.sleep)
 
@@ -55,10 +58,15 @@ public struct PoseMachine: Sendable {
     public private(set) var pose: Pose
     private var lastStep: Double
     private var transition: (frames: [Frame], start: Double, framesPerSecond: Double, target: Pose)?
+    private var nextHuff: Double?
+    private let random: @Sendable (ClosedRange<Double>) -> Double
 
     /// Starts sitting, as if the last key was pressed just long enough ago.
-    public init(timing: Timing = Timing(), now: Double = 0) {
+    /// `random` picks the wait before each huff; tests pass a fixed one.
+    public init(timing: Timing = Timing(), now: Double = 0,
+                random: @escaping @Sendable (ClosedRange<Double>) -> Double = { Double.random(in: $0) }) {
         self.timing = timing
+        self.random = random
         pose = .sitting
         lastStep = now - timing.sitAfter
     }
@@ -90,6 +98,7 @@ public struct PoseMachine: Sendable {
             let fps = target < pose ? timing.getUpFramesPerSecond
                 : target == .sleeping && pose == .sitting ? timing.lieDownFramesPerSecond : timing.sitDownFramesPerSecond
             transition = (frames, now, fps, target)
+            nextHuff = nil
             return Output(frame: frames[0], scrolls: false, showsZz: false)
         }
         switch pose {
@@ -97,6 +106,14 @@ public struct PoseMachine: Sendable {
             let i = Int(now * timing.walkFramesPerSecond) % Self.walkFrameCount
             return Output(frame: .walk(max(0, i)), scrolls: true, showsZz: false)
         case .sitting:
+            let huff = nextHuff ?? now + random(timing.huffEvery)
+            nextHuff = huff
+            if now >= huff {
+                if now < huff + timing.huffDuration {
+                    return Output(frame: .sit(4), scrolls: false, showsZz: false)
+                }
+                nextHuff = now + random(timing.huffEvery)
+            }
             return Output(frame: Self.sitDown.last!, scrolls: false, showsZz: false)
         case .sleeping:
             return Output(frame: Self.lieDown.last!, scrolls: false, showsZz: true)
