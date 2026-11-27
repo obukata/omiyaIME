@@ -58,7 +58,7 @@ public final class SystemUserDictionary: @unchecked Sendable {
             guard let reading = sqlite3_column_text(statement, 0),
                   let phrase = sqlite3_column_text(statement, 1) else { continue }
             let entry = UserDictionaryEntry(reading: String(cString: reading), phrase: String(cString: phrase))
-            // Text replacements also hold English shortcuts; CandidatePolicy drops Latin-only phrases.
+            // English shortcuts (e.g. "omw") have readings romaji input never produces, so they never match.
             if entry.isValid, seen.insert(entry).inserted { entries.append(entry) }
         }
         return entries

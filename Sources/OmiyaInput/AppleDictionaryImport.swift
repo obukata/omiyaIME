@@ -12,7 +12,7 @@ public struct UserDictionaryEntry: Codable, Hashable, Sendable {
     var isValid: Bool {
         !reading.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && !phrase.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            && CandidatePolicy.isAllowed(phrase)
+            && CandidatePolicy.isAllowedUserPhrase(phrase)
     }
 }
 
@@ -56,7 +56,7 @@ public struct AppleDictionaryImport {
                 issues.append(Issue(row: row, reason: .empty))
                 continue
             }
-            guard CandidatePolicy.isAllowed(phrase) else {
+            guard CandidatePolicy.isAllowedUserPhrase(phrase) else {
                 issues.append(Issue(row: row, reason: .excludedCandidate))
                 continue
             }

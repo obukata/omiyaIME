@@ -71,9 +71,10 @@ final class ConversionTests: XCTestCase {
             candidates: ["変換", "☺", "☻", "😀", "❤️", "1️⃣", "🇯🇵", "👩‍💻",
                          "Ａｐｐｌｅ", "café", "日😀本", "1", "１", "★", "ＩＴ企業",
                          "時計⌚︎", "候補", "変換"],
-            userCandidates: ["候補", "😀", "english", "候補"]
+            userCandidates: ["候補", "😀", "test@example.com", "候補"]
         )
-        let expected = ["候補", "変換", "1", "１", "★", "ＩＴ企業", "時計⌚︎", "よみ"]
+        // User-registered English text (e.g. an e-mail address) is kept; converter English is not.
+        let expected = ["候補", "test@example.com", "変換", "1", "１", "★", "ＩＴ企業", "時計⌚︎", "よみ"]
         XCTAssertTrue(CandidatePolicy.ranked(segment) == expected)
         XCTAssertTrue(CandidatePolicy.ranked(segment) == expected)
     }

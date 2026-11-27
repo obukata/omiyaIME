@@ -34,14 +34,20 @@ public struct ConversionPresentation: Equatable, Sendable {
 enum CandidatePolicy {
     static func ranked(_ segment: ConversionSegment) -> [String] {
         var seen = Set<String>()
-        let candidates = segment.userCandidates + segment.candidates + [segment.reading]
-        return candidates.filter { isAllowed($0) && seen.insert($0).inserted }
+        let user = segment.userCandidates.filter { isAllowedUserPhrase($0) && seen.insert($0).inserted }
+        let converted = (segment.candidates + [segment.reading]).filter { isAllowed($0) && seen.insert($0).inserted }
+        return user + converted
+    }
+
+    /// Words the user registered: English text such as an e-mail address is the user's own choice and
+    /// allowed (2026-11-27 user answer); emoji stay excluded (R-08).
+    static func isAllowedUserPhrase(_ text: String) -> Bool {
+        !text.isEmpty && !text.contains(where: isEmoji)
+            && !text.unicodeScalars.contains(where: { $0.value < 0x20 || $0.value == 0x7F })
     }
 
     static func isAllowed(_ text: String) -> Bool {
-        guard !text.isEmpty, !text.contains(where: isEmoji),
-              !text.unicodeScalars.contains(where: { $0.value < 0x20 || $0.value == 0x7F })
-        else { return false }
+        guard isAllowedUserPhrase(text) else { return false }
         let hasLatin = text.range(of: #"\p{Latin}"#, options: .regularExpression) != nil
         let hasJapanese = text.range(of: #"[\p{Hiragana}\p{Katakana}\p{Han}]"#,
                                      options: .regularExpression) != nil

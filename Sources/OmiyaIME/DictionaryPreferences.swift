@@ -38,10 +38,9 @@ final class DictionaryPreferences: ObservableObject {
     func show() {
         if window == nil {
             let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 720, height: 480),
-                                  styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
+                                  styleMask: [.titled, .closable, .miniaturizable, .resizable],
                                   backing: .buffered, defer: false)
             window.title = "おみやIMEの設定"
-            window.toolbarStyle = .unified
             window.contentViewController = NSHostingController(rootView: SettingsView(model: self))
             window.isReleasedWhenClosed = false
             window.center()
@@ -53,6 +52,13 @@ final class DictionaryPreferences: ObservableObject {
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
         window?.orderFrontRegardless()
+    }
+
+    func saveSnapshot(to url: URL) {
+        guard let view = window?.contentView?.superview ?? window?.contentView,
+              let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return }
+        view.cacheDisplay(in: view.bounds, to: rep)
+        try? rep.representation(using: .png, properties: [:])?.write(to: url)
     }
 
     @discardableResult
@@ -67,7 +73,7 @@ final class DictionaryPreferences: ObservableObject {
             entries = store.entries
             return true
         } catch UserDictionaryFile.ValidationError.invalidEntry {
-            errorMessage = "読みと語句を入力してください。絵文字や英字だけの語句は登録できません。"
+            errorMessage = "読みと語句を入力してください。絵文字は登録できません。"
         } catch UserDictionaryFile.ValidationError.duplicateEntry {
             errorMessage = "同じ読みと語句がすでに登録されています。"
         } catch {
@@ -91,24 +97,46 @@ private struct SettingsView: View {
     @State private var pane: Pane? = .general
 
     var body: some View {
-        NavigationSplitView {
-            List(Pane.allCases, selection: $pane) { pane in
-                Label {
-                    Text(pane.title)
-                } icon: {
-                    Image(systemName: pane.symbol)
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .frame(width: 20, height: 20)
-                        .background(pane.tint.gradient, in: RoundedRectangle(cornerRadius: 5))
+        // A hand-made sidebar: NavigationSplitView inside this AppKit-hosted window drew only
+        // placeholder rows on macOS 26.5.2 (2026-11-27 report).
+        HStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 2) {
+                ForEach(Pane.allCases) { item in
+                    Button { pane = item } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: item.symbol)
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(.white)
+                                .frame(width: 20, height: 20)
+                                .background(item.tint.gradient, in: RoundedRectangle(cornerRadius: 5))
+                            Text(item.title)
+                                .foregroundStyle(pane == item ? Color.white : Color.primary)
+                            Spacer()
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 5)
+                        .background(pane == item ? Color.accentColor : .clear, in: RoundedRectangle(cornerRadius: 6))
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+                Spacer()
+            }
+            .padding(10)
+            .frame(width: 200)
+            .background(.background.secondary)
+            Divider()
+            VStack(alignment: .leading, spacing: 0) {
+                Text((pane ?? .general).title)
+                    .font(.title2.bold())
+                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
+                switch pane ?? .general {
+                case .general: GeneralSettings()
+                case .dictionary: DictionarySettings(model: model)
                 }
             }
-            .navigationSplitViewColumnWidth(min: 180, ideal: 200, max: 240)
-        } detail: {
-            switch pane ?? .general {
-            case .general: GeneralSettings()
-            case .dictionary: DictionarySettings(model: model)
-            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .frame(minWidth: 640, minHeight: 420)
     }
@@ -135,7 +163,6 @@ private struct GeneralSettings: View {
             }
         }
         .formStyle(.grouped)
-        .navigationTitle("一般")
         .onChange(of: icon) { _, newValue in MenuIconInstaller.apply(newValue) }
     }
 }
@@ -225,7 +252,6 @@ private struct DictionarySettings: View {
             }
         }
         .padding(20)
-        .navigationTitle("ユーザ辞書")
         .alert("ユーザ辞書", isPresented: Binding(
             get: { model.errorMessage != nil },
             set: { if !$0 { model.errorMessage = nil } }

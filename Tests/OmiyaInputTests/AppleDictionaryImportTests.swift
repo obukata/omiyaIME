@@ -28,10 +28,10 @@ final class AppleDictionaryImportTests: XCTestCase {
         ]
         let data = try PropertyListSerialization.data(fromPropertyList: rows, format: .xml, options: 0)
         let preview = try AppleDictionaryImport(data: data)
-        XCTAssertEqual(preview.entries.count, 1)
-        XCTAssertEqual(preview.issues.map(\.row), [2, 3, 4, 5, 6])
-        XCTAssertEqual(preview.issues.map(\.reason), [.duplicate, .empty, .excludedCandidate,
-                                                      .excludedCandidate, .invalidFields])
+        // English phrases are the user's own registration and are kept; emoji are still excluded.
+        XCTAssertEqual(preview.entries.map(\.phrase), ["見本", "Example"])
+        XCTAssertEqual(preview.issues.map(\.row), [2, 3, 4, 6])
+        XCTAssertEqual(preview.issues.map(\.reason), [.duplicate, .empty, .excludedCandidate, .invalidFields])
     }
 
     func testEmptyArrayAndInvalidFile() throws {

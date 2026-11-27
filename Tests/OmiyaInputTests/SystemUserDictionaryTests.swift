@@ -30,16 +30,17 @@ final class SystemUserDictionaryTests: XCTestCase {
         return url
     }
 
-    func testReadsActiveJapaneseEntriesOnly() throws {
+    func testReadsActiveEntriesWithoutEmoji() throws {
         let url = try makeStore([
             ("てすとご", "試験語", 0),
             ("けしたご", "消した語", 1),
-            ("omw", "On my way!", 0),
+            ("めーる", "test@example.com", 0),
             ("てすとご", "試験語", 0),
             ("にこ", "😀", 0)
         ])
         XCTAssertEqual(SystemUserDictionary(location: url).entries,
-                       [UserDictionaryEntry(reading: "てすとご", phrase: "試験語")])
+                       [UserDictionaryEntry(reading: "てすとご", phrase: "試験語"),
+                        UserDictionaryEntry(reading: "めーる", phrase: "test@example.com")])
     }
 
     func testRereadsAfterTheStoreChanges() throws {
