@@ -67,6 +67,66 @@ enum PixelArt {
         }
     }
 
+    /// Draws a picture from rows of letters, one letter per dot; '.' is transparent.
+    /// Dots next to the shape that are still transparent become `outline`, if given.
+    static func fromRows(_ rows: [String], palette: [Character: RGBA], outline: RGBA? = nil) -> CGImage? {
+        let grid = rows.map(Array.init)
+        let height = grid.count, width = grid.map(\.count).max() ?? 0
+        func color(_ x: Int, _ y: Int) -> RGBA? {
+            guard (0..<height).contains(y), (0..<width).contains(x), x < grid[y].count else { return nil }
+            return palette[grid[y][x]]
+        }
+        return image(width: width, height: height) { x, y in
+            if let c = color(x, y) { return c }
+            guard let outline else { return nil }
+            let around = [(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)]
+            return around.contains(where: { color($0.0, $0.1) != nil }) ? outline : nil
+        }
+    }
+
+    /// An 18×18 treasure chest with a white edge, to match the gear.
+    static func treasureChest() -> CGImage? {
+        fromRows([
+            "..................",
+            "..................",
+            "...KKKKKKKKKKKK...",
+            "..KBBBBBBBBBBBBK..",
+            ".KBDDDDDDDDDDDDBK.",
+            ".KBBBBBBBBBBBBBBK.",
+            ".KGGGGGGYYGGGGGGK.",
+            ".KKKKKKKYYKKKKKKK.",
+            ".KBBBBBKGGKBBBBBK.",
+            ".KBDDDDKYYKDDDDBK.",
+            ".KBBBBBBKKBBBBBBK.",
+            ".KGGGGGGGGGGGGGGK.",
+            ".KBBBBBBBBBBBBBBK.",
+            ".KBDDDDDDDDDDDDBK.",
+            ".KGGGGGGGGGGGGGGK.",
+            "..KKKKKKKKKKKKKK..",
+            "..................",
+            ".................."
+        ], palette: [
+            "K": RGBA(r: 40, g: 24, b: 16, a: 255),
+            "B": RGBA(r: 168, g: 104, b: 56, a: 255),
+            "D": RGBA(r: 120, g: 70, b: 36, a: 255),
+            "G": RGBA(r: 232, g: 176, b: 48, a: 255),
+            "Y": RGBA(r: 255, g: 232, b: 128, a: 255)
+        ], outline: white)
+    }
+
+    /// A 5×7 question mark for treasures not found yet.
+    static func questionMark(color: RGBA) -> CGImage? {
+        fromRows([
+            ".###.",
+            "#...#",
+            "....#",
+            "...#.",
+            "..#..",
+            ".....",
+            "..#.."
+        ], palette: ["#": color])
+    }
+
     /// A status plate drawn at 2x: dark fill and a white border with cut corners.
     /// Sizes are in points; the text is drawn without smoothing.
     static func plate(lines: [(label: String, value: String)], width points: Int, border borderPoints: Int) -> CGImage? {

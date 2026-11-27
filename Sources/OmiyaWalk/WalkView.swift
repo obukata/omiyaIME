@@ -7,12 +7,12 @@ import QuartzCore
 /// pointer on him for a moment shows the whole stage, which then takes clicks until the
 /// pointer leaves it.
 /// The circle has a dotted white rim with a black shadow, a status plate overlaps its lower part,
-/// and a gear button sits on the rim at the upper right. There is no window frame.
+/// and a treasure chest and a gear sit on the rim at the right. There is no window frame.
 @MainActor
 public final class WalkView: NSView {
     /// Tuning values for the prototype. All lengths are in points.
     public struct Layout: Sendable {
-        /// Size of one dot of the frame, rim, shadow and gear.
+        /// Size of one dot of the frame, rim, shadow and icons.
         public var dot: CGFloat = 2
         /// Circle diameter in dots.
         public var diameterDots = 140
@@ -21,8 +21,9 @@ public final class WalkView: NSView {
         public var margin: CGFloat = 8
         /// Gap between the bottom of the status plate and the bottom of the circle.
         public var statusInset: CGFloat = 8
-        /// Where the gear sits on the rim, in degrees up from the right.
-        public var gearAngle: CGFloat = 40
+        /// Where the icons sit on the rim, in degrees up from the right.
+        public var treasureAngle: CGFloat = 40
+        public var gearAngle: CGFloat = 13
         public var statusWidth = 220
         /// Size of one sprite frame (the PNGs are drawn at 2x).
         public var spriteSize = CGSize(width: 120, height: 80)
@@ -67,6 +68,11 @@ public final class WalkView: NSView {
 
     public var status = Status.walked(WalkProgress()) { didSet { drawStatus() } }
     public private(set) var isExpanded = false
+    /// Called when the treasure chest is clicked.
+    public var onTreasure: (() -> Void)? {
+        get { treasure.onClick }
+        set { treasure.onClick = newValue }
+    }
     /// Shown when the gear is clicked.
     public var gearMenu: NSMenu? {
         get { gear.menuToShow }
@@ -83,12 +89,13 @@ public final class WalkView: NSView {
     /// The distance under Omiya's feet while the stage is closed.
     private let footLabel = CALayer()
     private var feetPoint = CGPoint.zero
-    private let gear = GearButton()
+    private let gear = IconButton(toolTip: "おみや君の設定")
+    private let treasure = IconButton(toolTip: "たからもの")
     /// Parts shown only while the stage is open.
     private let below = CALayer()
     private let above = CALayer()
     private var circleFrame = CGRect.zero
-    private var gearFrame = CGRect.zero
+    private var iconFrames: [CGRect] = []
     private var hoverStart: CFTimeInterval?
     private var leaveStart: CFTimeInterval?
     private let progressFile: WalkProgressFile?
@@ -212,16 +219,19 @@ public final class WalkView: NSView {
         plate.contentsGravity = .resize
         above.addSublayer(plate)
 
-        // The gear is drawn in the scene; a clear view on top of it takes the clicks.
-        let gearSide = 18 * layout.dot
-        let angle = layout.gearAngle * .pi / 180
-        let gearCenter = CGPoint(x: m + side / 2 + side / 2 * cos(angle), y: m + side / 2 - side / 2 * sin(angle))
-        let gearFrame = CGRect(x: (gearCenter.x - gearSide / 2).rounded(), y: (gearCenter.y - gearSide / 2).rounded(),
-                               width: gearSide, height: gearSide)
-        self.gearFrame = gearFrame
-        above.addSublayer(pixelLayer(PixelArt.gear(), frame: gearFrame))
-        gear.frame = CGRect(x: gearFrame.minX, y: bounds.height - gearFrame.maxY, width: gearSide, height: gearSide)
-        addSubview(gear)
+        // Icons are drawn in the scene; a clear view on top of each takes the clicks.
+        for (image, angle, button) in [(PixelArt.treasureChest(), layout.treasureAngle, treasure),
+                                       (PixelArt.gear(), layout.gearAngle, gear)] {
+            let iconSide = 18 * layout.dot
+            let radians = angle * .pi / 180
+            let center = CGPoint(x: m + side / 2 + side / 2 * cos(radians), y: m + side / 2 - side / 2 * sin(radians))
+            let frame = CGRect(x: (center.x - iconSide / 2).rounded(), y: (center.y - iconSide / 2).rounded(),
+                               width: iconSide, height: iconSide)
+            iconFrames.append(frame)
+            above.addSublayer(pixelLayer(image, frame: frame))
+            button.frame = CGRect(x: frame.minX, y: bounds.height - frame.maxY, width: iconSide, height: iconSide)
+            addSubview(button)
+        }
     }
 
     private func drawStatus() {
@@ -288,6 +298,7 @@ public final class WalkView: NSView {
         isExpanded = expanded
         window?.ignoresMouseEvents = !expanded
         gear.isHidden = !expanded
+        treasure.isHidden = !expanded
         CATransaction.begin()
         CATransaction.setAnimationDuration(animated ? (expanded ? layout.fadeInDuration : layout.fadeOutDuration) : 0)
         CATransaction.setDisableActions(!animated)
@@ -312,7 +323,7 @@ public final class WalkView: NSView {
             let r = circleFrame.width / 2
             let dx = point.x - circleFrame.midX, dy = point.y - circleFrame.midY
             let inside = dx * dx + dy * dy <= r * r || plate.frame.contains(point)
-                || gearFrame.insetBy(dx: -4, dy: -4).contains(point) || gear.isShowingMenu
+                || iconFrames.contains { $0.insetBy(dx: -4, dy: -4).contains(point) } || gear.isShowingMenu
             if inside {
                 leaveStart = nil
             } else if let start = leaveStart {
@@ -370,15 +381,16 @@ public final class WalkView: NSView {
     }
 }
 
-/// The gear at the upper right. For now it only opens a small menu.
+/// A clear click area over an icon drawn in the scene. It runs `onClick`, or opens `menuToShow`.
 @MainActor
-final class GearButton: NSView {
+final class IconButton: NSView {
     var menuToShow: NSMenu?
+    var onClick: (() -> Void)?
     private(set) var isShowingMenu = false
 
-    init() {
+    init(toolTip: String) {
         super.init(frame: .zero)
-        toolTip = "おみや君の設定"
+        self.toolTip = toolTip
     }
 
     @available(*, unavailable)
@@ -387,6 +399,10 @@ final class GearButton: NSView {
     override var mouseDownCanMoveWindow: Bool { false }
 
     override func mouseDown(with event: NSEvent) {
+        if let onClick {
+            onClick()
+            return
+        }
         isShowingMenu = true
         menuToShow?.popUp(positioning: nil, at: CGPoint(x: 0, y: -4), in: self)
         isShowingMenu = false

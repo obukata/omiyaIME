@@ -19,10 +19,21 @@ final class PreviewDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(withTitle: "終了", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "")
         panel.walkView?.menu = menu
         panel.walkView?.gearMenu = menu
+        panel.walkView?.onTreasure = { TreasureWindowController.shared.show() }
         panel.placeAtLowerRight()
         panel.orderFrontRegardless()
         self.panel = panel
     }
+}
+
+// Development option: `--treasure-snapshot out.png` writes the treasure list as a picture and exits.
+if let index = CommandLine.arguments.firstIndex(of: "--treasure-snapshot"), index + 1 < CommandLine.arguments.count {
+    MainActor.assumeIsolated {
+        if let data = TreasureWindowController.snapshotPNG() {
+            try? data.write(to: URL(fileURLWithPath: CommandLine.arguments[index + 1]))
+        }
+    }
+    exit(0)
 }
 
 // Development option: `--snapshot out.png [seconds] [steps]` writes the open stage as one picture
