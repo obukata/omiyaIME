@@ -30,7 +30,7 @@ final class CandidateWindow {
         background.material = .menu
         background.state = .active
         background.wantsLayer = true
-        background.layer?.cornerRadius = 7
+        background.layer?.cornerRadius = 12
         background.layer?.masksToBounds = true
         background.addSubview(listView)
         panel.contentView = background
@@ -60,12 +60,12 @@ final class CandidateWindow {
 
 @MainActor
 private final class CandidateListView: NSView {
-    private static let font = NSFont.systemFont(ofSize: 15)
-    private static let labelFont = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular)
-    private static let footerFont = NSFont.systemFont(ofSize: 11)
-    private static let rowHeight: CGFloat = 24
-    private static let inset: CGFloat = 5
-    private static let labelWidth: CGFloat = 20
+    private static let font = NSFont.systemFont(ofSize: 17)
+    private static let labelFont = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .regular)
+    private static let footerFont = NSFont.systemFont(ofSize: 12)
+    private static let rowHeight: CGFloat = 30
+    private static let inset: CGFloat = 8
+    private static let labelWidth: CGFloat = 24
 
     var onClick: ((String) -> Void)?
     private var rows: [String] = []
@@ -85,8 +85,8 @@ private final class CandidateListView: NSView {
         needsDisplay = true
 
         let textWidth = rows.map { ($0 as NSString).size(withAttributes: [.font: Self.font]).width }.max() ?? 0
-        let width = max(110, ceil(textWidth) + Self.labelWidth + Self.inset * 2 + 18)
-        let height = CGFloat(rows.count) * Self.rowHeight + Self.inset * 2 + (footer == nil ? 0 : 18)
+        let width = max(130, ceil(textWidth) + Self.labelWidth + Self.inset * 2 + 28)
+        let height = CGFloat(rows.count) * Self.rowHeight + Self.inset * 2 + (footer == nil ? 0 : 22)
         return NSSize(width: width, height: height)
     }
 
@@ -97,20 +97,20 @@ private final class CandidateListView: NSView {
             let isSelected = index == selectedRow
             if isSelected {
                 NSColor.selectedContentBackgroundColor.setFill()
-                NSBezierPath(roundedRect: row, xRadius: 4, yRadius: 4).fill()
+                NSBezierPath(roundedRect: row, xRadius: 7, yRadius: 7).fill()
             }
             let textColor: NSColor = isSelected ? .alternateSelectedControlTextColor : .labelColor
             let labelColor: NSColor = isSelected ? .alternateSelectedControlTextColor : .secondaryLabelColor
             let label = NSAttributedString(string: "\(index + 1)", attributes: [.font: Self.labelFont, .foregroundColor: labelColor])
-            label.draw(at: NSPoint(x: row.minX + 6, y: row.midY - label.size().height / 2))
+            label.draw(at: NSPoint(x: row.minX + 9, y: row.midY - label.size().height / 2))
             let candidate = NSAttributedString(string: text, attributes: [.font: Self.font, .foregroundColor: textColor])
-            candidate.draw(at: NSPoint(x: row.minX + Self.labelWidth + 6, y: row.midY - candidate.size().height / 2))
+            candidate.draw(at: NSPoint(x: row.minX + Self.labelWidth + 9, y: row.midY - candidate.size().height / 2))
         }
         if let footer {
             let attributed = NSAttributedString(string: footer, attributes: [.font: Self.footerFont, .foregroundColor: NSColor.secondaryLabelColor])
             let size = attributed.size()
-            attributed.draw(at: NSPoint(x: bounds.width - Self.inset - 6 - size.width,
-                                        y: bounds.height - Self.inset - 16))
+            attributed.draw(at: NSPoint(x: bounds.width - Self.inset - 9 - size.width,
+                                        y: bounds.height - Self.inset - 18))
         }
     }
 
