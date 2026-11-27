@@ -5,9 +5,9 @@ import OmiyaWalkCore
 final class WalkProgressTests: XCTestCase {
     func testDistanceTextChangesUnitAtOneMeterAndOneKilometer() {
         let cases: [(Int, String)] = [
-            (0, "00cm"), (1, "20cm"), (4, "80cm"),
-            (5, "001.0m"), (6, "001.2m"), (617, "123.4m"), (4_999, "999.8m"),
-            (5_000, "001.0km"), (61_725, "012.3km"), (6_172_500, "1234.5km")
+            (0, "0cm"), (1, "20cm"), (4, "80cm"),
+            (5, "1.0m"), (6, "1.2m"), (617, "123.4m"), (4_999, "999.8m"),
+            (5_000, "1.0km"), (61_725, "12.3km"), (6_172_500, "1234.5km")
         ]
         for (steps, text) in cases {
             XCTAssertEqual(WalkProgress(steps: steps).distanceText, text, "\(steps) steps")

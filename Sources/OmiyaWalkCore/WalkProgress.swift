@@ -14,19 +14,19 @@ public struct WalkProgress: Equatable, Sendable, Codable {
 
     public var centimeters: Int { steps * Self.centimetersPerStep }
 
-    /// Under 1 m: `40cm`. Under 1 km: `012.3m`. From 1 km: `001.2km`.
+    /// Under 1 m: `40cm`. Under 1 km: `12.3m`. From 1 km: `1.2km`. No leading zeros (2026-11-27 利用者の指定).
     /// Values are rounded down, so the unit changes exactly at 1 m and 1 km.
     public var distanceText: String {
         let cm = centimeters
         if cm < 100 {
-            return String(format: "%02dcm", cm)
+            return "\(cm)cm"
         }
         if cm < 100_000 {
             let tenthsOfMeter = cm / 10
-            return String(format: "%03d.%dm", tenthsOfMeter / 10, tenthsOfMeter % 10)
+            return "\(tenthsOfMeter / 10).\(tenthsOfMeter % 10)m"
         }
         let tenthsOfKilometer = cm / 10_000
-        return String(format: "%03d.%dkm", tenthsOfKilometer / 10, tenthsOfKilometer % 10)
+        return "\(tenthsOfKilometer / 10).\(tenthsOfKilometer % 10)km"
     }
 }
 
