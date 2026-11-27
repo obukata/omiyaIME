@@ -15,6 +15,8 @@ macOS専用の日本語IMEを開発するための仕様・引き継ぎ資料で
 - [アーキテクチャ](docs/ARCHITECTURE.md): Phase 0の根拠、変換器比較、技術選定と実機検証の残項目
 - [ロードマップ](docs/ROADMAP.md): 検証から公開準備までの段階
 - [テスト仕様](docs/TEST_SPEC.md): 完了条件と検証項目
+- [開発とリリースの進め方](docs/DEVELOPMENT.md): 機能ごとのブランチ、試用、リリースの手順
+- [変更履歴](CHANGELOG.md): リリースごとの変更点
 - [初回プロンプト](CODEX_PROMPT.md): Codexで作業を開始する際に使う文章
 
 ## 重要な方針
