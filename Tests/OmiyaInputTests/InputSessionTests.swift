@@ -67,6 +67,11 @@ final class InputSessionTests: XCTestCase {
         _ = other.handle(.text("Q"))
         XCTAssertTrue(other.handle(.escape) == .mark(""))
         XCTAssertTrue(other.switchModeByKey(to: .japanese) == .passThrough)
+
+        // The system may switch the mode itself (e.g. the かな key); the English text is kept.
+        var system = InputSession()
+        _ = type("IME", in: &system)
+        XCTAssertTrue(system.changeMode(to: .japanese) == .commit("IME"))
     }
 
     func testBracketsBecomeJapaneseQuotes() {
@@ -108,7 +113,7 @@ final class InputSessionTests: XCTestCase {
         var session = InputSession()
         _ = type("kana", in: &session)
         XCTAssertTrue(session.changeMode(to: .japanese) == .passThrough)
-        XCTAssertTrue(session.changeMode(to: .english) == .mark(""))
+        XCTAssertTrue(session.changeMode(to: .english) == .commit("かな"))
         XCTAssertTrue(session.handle(.text("a")) == .passThrough)
         XCTAssertTrue(session.handle(.text("9")) == .passThrough)
         XCTAssertTrue(session.handle(.space) == .passThrough)

@@ -19,7 +19,7 @@
 	<key>CFBundleShortVersionString</key>
 	<string>0.1.0</string>
 	<key>CFBundleVersion</key>
-	<string>12</string>
+	<string>13</string>
 	<key>ComponentInputModeDict</key>
 	<dict>
 		<key>tsInputModeListKey</key>
@@ -43,8 +43,6 @@
 				<true/>
 				<key>tsInputModeIsVisibleKey</key>
 				<true/>
-				<key>tsInputModeJISKeyboardShortcutKey</key>
-				<integer>1</integer>
 				<key>tsInputModeKeyEquivalentKey</key>
 				<string>J</string>
 				<key>tsInputModeKeyEquivalentModifiersKey</key>
@@ -77,8 +75,6 @@
 				<true/>
 				<key>tsInputModeIsVisibleKey</key>
 				<true/>
-				<key>tsInputModeJISKeyboardShortcutKey</key>
-				<integer>3</integer>
 				<key>tsInputModeKeyEquivalentKey</key>
 				<string>;</string>
 				<key>tsInputModeKeyEquivalentModifiersKey</key>

@@ -45,10 +45,12 @@ public struct InputSession {
         self.converter = converter
     }
 
+    /// Mode change from the system (input menu, or keys macOS handles itself). Pending text is committed,
+    /// not discarded: cancelling lost text typed before pressing かな (2026-11-27 report).
     public mutating func changeMode(to mode: Mode) -> Action {
         guard mode != self.mode else { return .passThrough }
         self.mode = mode
-        return cancelComposition()
+        return finishComposition()
     }
 
     /// Switches mode from the keyboard (JIS かな / 英数 keys). Like the standard IME, pending text is committed.
