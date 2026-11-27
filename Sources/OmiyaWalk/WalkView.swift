@@ -96,6 +96,9 @@ public final class WalkView: NSView {
     private var lastProgressCheck: CFTimeInterval = 0
     private let frames: [String: CGImage]
     private let zz = CALayer()
+    /// White outlines of each frame, shown behind Omiya only while the stage is closed.
+    private let outlines: [String: CGImage]
+    private let dogOutline = CALayer()
     private var poses = PoseMachine()
     private var lastSteps: Int?
     private var streetLoopWidth: CGFloat = 0
@@ -115,6 +118,7 @@ public final class WalkView: NSView {
         self.progressFile = progressFile
         let names = (0..<4).map { "walk_\($0)" } + (0..<5).map { "sit_\($0)" } + (0..<6).map { "sleep_\($0)" } + ["zz"]
         frames = Dictionary(uniqueKeysWithValues: names.compactMap { name in WalkArt.image(named: name).map { (name, $0) } })
+        outlines = frames.compactMapValues { PixelArt.outline(of: $0, pixels: 2) }
         super.init(frame: CGRect(origin: .zero, size: Self.size(for: layout)))
         wantsLayer = true
         setUpLayers()
@@ -181,6 +185,11 @@ public final class WalkView: NSView {
         dog.contentsScale = 2
         dog.magnificationFilter = .nearest
         dog.contents = frames["sit_3"]
+        dogOutline.frame = dog.frame
+        dogOutline.contentsScale = 2
+        dogOutline.magnificationFilter = .nearest
+        dogOutline.contents = outlines["sit_3"]
+        content.addSublayer(dogOutline)
         content.addSublayer(dog)
         zz.frame = dog.frame
         zz.contentsScale = 2
@@ -286,6 +295,7 @@ public final class WalkView: NSView {
             part.opacity = expanded ? 1 : 0
         }
         footLabel.opacity = expanded ? 0 : 1
+        dogOutline.opacity = expanded ? 0 : 1
         CATransaction.commit()
     }
 
@@ -346,7 +356,10 @@ public final class WalkView: NSView {
             offset = (offset + layout.walkSpeed * delta).truncatingRemainder(dividingBy: streetLoopWidth)
             street.position.x = -offset
         }
-        if let image = frames[pose.frame.imageName] { dog.contents = image }
+        if let image = frames[pose.frame.imageName] {
+            dog.contents = image
+            dogOutline.contents = outlines[pose.frame.imageName]
+        }
         zz.isHidden = !pose.showsZz
         if pose.showsZz {
             // A gentle sway, kept on whole points so the dots stay square.

@@ -103,6 +103,26 @@ enum PixelArt {
         return context.makeImage()
     }
 
+    /// A white silhouette of `image` grown by `pixels` on every side, to draw behind it as an outline.
+    static func outline(of image: CGImage, pixels: Int) -> CGImage? {
+        let width = image.width, height = image.height
+        guard let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+                                      space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+        context.interpolationQuality = .none
+        let rect = CGRect(x: 0, y: 0, width: width, height: height)
+        for dx in -pixels...pixels {
+            for dy in -pixels...pixels {
+                context.draw(image, in: rect.offsetBy(dx: CGFloat(dx), dy: CGFloat(dy)))
+            }
+        }
+        // Keep the shape, make it solid white.
+        context.setBlendMode(.sourceIn)
+        context.setFillColor(NSColor.white.cgColor)
+        context.fill(rect)
+        return context.makeImage()
+    }
+
     /// Small white text with a one-point black outline, drawn at 2x without smoothing,
     /// so it stays readable on any desktop picture. Returns the image and its size in points.
     static func outlinedLabel(_ text: String, size: CGFloat) -> (image: CGImage, points: CGSize)? {
