@@ -103,6 +103,35 @@ enum PixelArt {
         return context.makeImage()
     }
 
+    /// Small white text with a one-point black outline, drawn at 2x without smoothing,
+    /// so it stays readable on any desktop picture. Returns the image and its size in points.
+    static func outlinedLabel(_ text: String, size: CGFloat) -> (image: CGImage, points: CGSize)? {
+        let scale: CGFloat = 2, outline: CGFloat = 1
+        let font = CTFontCreateWithName("HiraginoSans-W6" as CFString, size * scale, nil)
+        let measured = CTLineGetTypographicBounds(
+            CTLineCreateWithAttributedString(NSAttributedString(string: text, attributes: [
+                NSAttributedString.Key(kCTFontAttributeName as String): font
+            ])), nil, nil, nil)
+        let pad = outline * scale
+        let width = Int((CGFloat(measured) + pad * 2).rounded(.up))
+        let height = Int((size * 1.4 * scale + pad * 2).rounded(.up))
+        guard let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+                                      space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+        context.setShouldAntialias(false)
+        context.setAllowsAntialiasing(false)
+        let origin = CGPoint(x: pad, y: pad + size * 0.35 * scale)
+        let step = outline * scale
+        for dx in [-step, 0, step] {
+            for dy in [-step, 0, step] where dx != 0 || dy != 0 {
+                draw(text, font: font, color: .black, at: CGPoint(x: origin.x + dx, y: origin.y + dy), in: context)
+            }
+        }
+        draw(text, font: font, color: .white, at: origin, in: context)
+        guard let image = context.makeImage() else { return nil }
+        return (image, CGSize(width: CGFloat(width) / scale, height: CGFloat(height) / scale))
+    }
+
     private static func draw(_ text: String, font: CTFont, color: NSColor, at point: CGPoint, in context: CGContext) {
         let attributed = NSAttributedString(string: text, attributes: [
             NSAttributedString.Key(kCTFontAttributeName as String): font,

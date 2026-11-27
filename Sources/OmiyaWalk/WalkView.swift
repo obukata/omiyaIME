@@ -43,6 +43,9 @@ public final class WalkView: NSView {
         public var hideDelay: Double = 0.4
         public var fadeInDuration: Double = 0.3
         public var fadeOutDuration: Double = 0.2
+        /// The small distance under Omiya while the stage is closed.
+        public var footLabelSize: CGFloat = 10
+        public var footLabelGap: CGFloat = 2
         public init() {}
 
         var diameter: CGFloat { CGFloat(diameterDots) * dot }
@@ -78,6 +81,9 @@ public final class WalkView: NSView {
     private let dog = CALayer()
     private let plate = CALayer()
     private let plateShadow = CALayer()
+    /// The distance under Omiya's feet while the stage is closed.
+    private let footLabel = CALayer()
+    private var feetPoint = CGPoint.zero
     private let gear = GearButton()
     /// Parts shown only while the stage is open.
     private let below = CALayer()
@@ -173,6 +179,10 @@ public final class WalkView: NSView {
         dog.magnificationFilter = .nearest
         dog.contents = walkFrames.first
         content.addSublayer(dog)
+        feetPoint = CGPoint(x: m + center.x, y: m + feetY)
+        footLabel.magnificationFilter = .nearest
+        footLabel.contentsScale = 2
+        scene.addSublayer(footLabel)
 
         scene.addSublayer(above)
         above.addSublayer(pixelLayer(PixelArt.ring(n, thickness: layout.rimDots, color: PixelArt.white), frame: circle))
@@ -210,6 +220,12 @@ public final class WalkView: NSView {
         plateShadow.frame = plate.frame.offsetBy(dx: 0, dy: layout.shadow)
         plateShadow.mask?.frame = plateShadow.bounds
         plateShadow.mask?.contents = image
+        if let label = PixelArt.outlinedLabel(status.distance, size: layout.footLabelSize) {
+            footLabel.contents = label.image
+            footLabel.frame = CGRect(x: (feetPoint.x - label.points.width / 2).rounded(),
+                                     y: feetPoint.y + layout.footLabelGap,
+                                     width: label.points.width, height: label.points.height)
+        }
         CATransaction.commit()
     }
 
@@ -260,6 +276,7 @@ public final class WalkView: NSView {
         for part in [below, street, above] {
             part.opacity = expanded ? 1 : 0
         }
+        footLabel.opacity = expanded ? 0 : 1
         CATransaction.commit()
     }
 
