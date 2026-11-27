@@ -38,10 +38,11 @@ public final class WalkView: NSView {
         public var walkSpeed: CGFloat = 22
         public var framesPerSecond: Double = 6
         /// How long the pointer rests on Omiya before the stage opens.
-        public var revealDelay: Double = 0.5
+        public var revealDelay: Double = 1.5
         /// How long the pointer stays away before the stage closes again.
         public var hideDelay: Double = 0.4
-        public var fadeDuration: Double = 0.2
+        public var fadeInDuration: Double = 0.3
+        public var fadeOutDuration: Double = 0.2
         public init() {}
 
         var diameter: CGFloat { CGFloat(diameterDots) * dot }
@@ -108,7 +109,9 @@ public final class WalkView: NSView {
         super.init(frame: CGRect(origin: .zero, size: Self.size(for: layout)))
         wantsLayer = true
         setUpLayers()
-        if let progressFile { status = .walked(progressFile.load()) } else { drawStatus() }
+        // Property observers do not run inside init, so draw the plate here.
+        if let progressFile { status = .walked(progressFile.load()) }
+        drawStatus()
         setExpanded(false, animated: false)
     }
 
@@ -252,7 +255,7 @@ public final class WalkView: NSView {
         window?.ignoresMouseEvents = !expanded
         gear.isHidden = !expanded
         CATransaction.begin()
-        CATransaction.setAnimationDuration(animated ? layout.fadeDuration : 0)
+        CATransaction.setAnimationDuration(animated ? (expanded ? layout.fadeInDuration : layout.fadeOutDuration) : 0)
         CATransaction.setDisableActions(!animated)
         for part in [below, street, above] {
             part.opacity = expanded ? 1 : 0
