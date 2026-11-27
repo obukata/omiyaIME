@@ -16,6 +16,8 @@ tar -xf "$work/upstream.tar" -C "$work/source"
 cd "$work/source"
 git apply --check "$project/Mozc/disable-file-history.patch"
 git apply "$project/Mozc/disable-file-history.patch"
+git apply --check "$project/Mozc/symbol-rewriter-visibility.patch"
+git apply "$project/Mozc/symbol-rewriter-visibility.patch"
 cp "$project/Mozc/worker.cc" src/converter/omiya_mozc_worker.cc
 printf '\n' >> src/converter/BUILD.bazel
 cat "$project/Mozc/worker-target.bazel" >> src/converter/BUILD.bazel

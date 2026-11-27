@@ -1,0 +1,10 @@
+--- a/src/rewriter/BUILD.bazel
++++ b/src/rewriter/BUILD.bazel
+@@ -529,6 +529,7 @@
+     name = "symbol_rewriter",
+     srcs = ["symbol_rewriter.cc"],
+     hdrs = ["symbol_rewriter.h"],
++    visibility = ["//converter:__pkg__"],
+     deps = [
+         ":rewriter_interface",
+         ":rewriter_util",

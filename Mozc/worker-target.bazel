@@ -13,5 +13,6 @@ mozc_cc_binary(
         "//protocol:config_cc_proto",
         "//request:conversion_request",
         "//rewriter:rewriter_interface",
+        "//rewriter:symbol_rewriter",
     ],
 )

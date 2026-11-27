@@ -18,6 +18,7 @@
 #include "protocol/config.pb.h"
 #include "request/conversion_request.h"
 #include "rewriter/rewriter_interface.h"
+#include "rewriter/symbol_rewriter.h"
 
 namespace {
 
@@ -36,11 +37,6 @@ class NoPrediction final : public mozc::prediction::PredictorInterface {
     return {};
   }
   absl::string_view GetPredictorName() const override { return "NoPrediction"; }
-};
-
-class NoRewriting final : public mozc::RewriterInterface {
- public:
-  bool Rewrite(const mozc::ConversionRequest&, mozc::Segments*) const override { return true; }
 };
 
 void WriteJSONString(std::ostream& output, std::string_view value) {
@@ -128,7 +124,12 @@ int main(int argc, char** argv) {
       *std::move(modules),
       [](const auto& modules) { return std::make_unique<mozc::ImmutableConverter>(modules); },
       [](const auto&, const auto&, const auto&) { return std::make_unique<NoPrediction>(); },
-      [](const auto&) { return std::make_unique<NoRewriting>(); });
+      // Only symbol candidates (e.g. えん -> ¥) are added; emoji, emoticon, English and
+      // other rewriters stay disabled.
+      [](const auto& modules) -> std::unique_ptr<mozc::RewriterInterface> {
+        const auto data = modules.GetDataManager().GetSymbolRewriterData();
+        return std::make_unique<mozc::SymbolRewriter>(data[0], data[1]);
+      });
 
   std::string reading;
   std::string sizes;

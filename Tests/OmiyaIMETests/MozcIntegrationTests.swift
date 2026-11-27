@@ -52,4 +52,29 @@ final class MozcIntegrationTests: XCTestCase {
         XCTAssertTrue(registered.text == entry.phrase)
         XCTAssertTrue(dictionarySession.handle(.enter) == .commit(entry.phrase))
     }
+
+    func testSymbolsAreOfferedAfterRegularCandidatesWithoutEmoji() throws {
+        guard let path = ProcessInfo.processInfo.environment["OMIYAIME_TEST_BUNDLE"] else {
+            throw XCTSkip("Set OMIYAIME_TEST_BUNDLE to a development app with Mozc.")
+        }
+        let converter = try XCTUnwrap(MozcConverter(bundle: try XCTUnwrap(Bundle(path: path))))
+        var session = InputSession(converter: converter)
+        for letter in "enn" { _ = session.handle(.text(String(letter))) }
+        _ = session.handle(.space)
+        guard case .markConversion(let yen) = session.handle(.space) else {
+            XCTFail("A second Space should show candidates")
+            return
+        }
+        XCTAssertNotEqual(yen.visibleCandidates.first, "¥")
+        XCTAssertTrue(yen.visibleCandidates.contains("¥"))
+
+        var weather = InputSession(converter: converter)
+        for letter in "tenki" { _ = weather.handle(.text(String(letter))) }
+        _ = weather.handle(.space)
+        guard case .markConversion(let listed) = weather.handle(.space) else {
+            XCTFail("A second Space should show candidates")
+            return
+        }
+        XCTAssertFalse(listed.visibleCandidates.contains("☔"))
+    }
 }

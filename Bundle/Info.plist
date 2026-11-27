@@ -19,13 +19,18 @@
 	<key>CFBundleShortVersionString</key>
 	<string>0.1.0</string>
 	<key>CFBundleVersion</key>
-	<string>3</string>
+	<string>4</string>
 	<key>ComponentInputModeDict</key>
 	<dict>
 		<key>tsInputModeListKey</key>
 		<dict>
 			<key>com.apple.inputmethod.Japanese</key>
 			<dict>
+				<key>TISIconLabels</key>
+				<dict>
+					<key>Primary</key>
+					<string>あ</string>
+				</dict>
 				<key>TISInputSourceID</key>
 				<string>jp.omiyaime.inputmethod.omiyaIME.Japanese</string>
 				<key>TISIntendedLanguage</key>
@@ -53,6 +58,11 @@
 			<dict>
 				<key>TISIconIsTemplate</key>
 				<true/>
+				<key>TISIconLabels</key>
+				<dict>
+					<key>Primary</key>
+					<string>A</string>
+				</dict>
 				<key>TISInputSourceID</key>
 				<string>jp.omiyaime.inputmethod.omiyaIME.Roman</string>
 				<key>TISIntendedLanguage</key>
