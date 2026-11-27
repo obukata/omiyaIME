@@ -5,7 +5,8 @@ struct Romaji {
     var isEmpty: Bool { kana.isEmpty && pending.isEmpty }
 
     var markedText: String {
-        kana + (pending == "nn" ? "ん" : String(pending.unicodeScalars.map(Self.fullWidth)))
+        // Letters not yet forming kana stay half-width, as in other IMEs.
+        kana + (pending == "nn" ? "ん" : pending)
     }
 
     var resolvedText: String {
@@ -29,14 +30,27 @@ struct Romaji {
         case ",": kana.append("、")
         case ".": kana.append("。")
         case "-": kana.append("ー")
+        case "[": kana.append("「")
+        case "]": kana.append("」")
+        case "0"..."9": kana.append(Character(symbol))
         default: kana.append(Self.fullWidth(symbol))
         }
     }
 
     mutating func deleteLast() {
-        if !pending.isEmpty {
+        if pending == "nn" {
+            // "nn" is shown as one ん, so one Delete removes both letters.
+            pending = ""
+        } else if !pending.isEmpty {
             pending.removeLast()
         } else if !kana.isEmpty {
+            kana.removeLast()
+        }
+        // Letters left over from an earlier unresolved spelling become editable romaji again,
+        // so "t" followed by "e" still makes て.
+        guard pending.isEmpty else { return }
+        while let last = kana.last, last.isASCII, last.isLetter {
+            pending.insert(last, at: pending.startIndex)
             kana.removeLast()
         }
     }
@@ -81,8 +95,7 @@ struct Romaji {
             if !final, Self.prefixes.contains(pending) {
                 return
             }
-            let scalar = pending.unicodeScalars[pending.unicodeScalars.startIndex]
-            kana.append(first == "n" ? "ん" : Self.fullWidth(scalar))
+            kana.append(first == "n" ? "ん" : first)
             pending.removeFirst()
         }
     }

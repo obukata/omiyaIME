@@ -17,21 +17,44 @@ final class InputSessionTests: XCTestCase {
 
     func testPendingLettersCanBeEditedOrCommitted() {
         var session = InputSession()
-        XCTAssertTrue(type("sh", in: &session) == .mark("ｓｈ"))
-        XCTAssertTrue(session.handle(.delete) == .mark("ｓ"))
+        XCTAssertTrue(type("sh", in: &session) == .mark("sh"))
+        XCTAssertTrue(session.handle(.delete) == .mark("s"))
         XCTAssertTrue(session.handle(.text("i")) == .mark("し"))
         XCTAssertTrue(session.handle(.delete) == .mark(""))
         XCTAssertTrue(session.handle(.delete) == .passThrough)
-        XCTAssertTrue(session.handle(.text("k")) == .mark("ｋ"))
-        XCTAssertTrue(session.handle(.enter) == .commit("ｋ"))
+        XCTAssertTrue(session.handle(.text("k")) == .mark("k"))
+        XCTAssertTrue(session.handle(.enter) == .commit("k"))
         XCTAssertTrue(session.handle(.enter) == .passThrough)
+    }
+
+    func testLeftoverLettersAndDigitsStayHalfWidth() {
+        var session = InputSession()
+        XCTAssertTrue(type("kyouhaiitn", in: &session) == .mark("きょうはいいtn"))
+        XCTAssertTrue(type("2", in: &session) == .mark("きょうはいいtん2"))
+        XCTAssertTrue(session.handle(.enter) == .commit("きょうはいいtん2"))
+    }
+
+    func testDeletingNAndReusingLeftoverLetters() {
+        var session = InputSession()
+        XCTAssertTrue(type("iitn", in: &session) == .mark("いいtn"))
+        XCTAssertTrue(session.handle(.text("n")) == .mark("いいtん"))
+        XCTAssertTrue(session.handle(.delete) == .mark("いいt"))
+        XCTAssertTrue(session.handle(.text("e")) == .mark("いいて"))
+        XCTAssertTrue(type("tn", in: &session) == .mark("いいてtn"))
+        XCTAssertTrue(session.handle(.delete) == .mark("いいてt"))
+        XCTAssertTrue(session.handle(.text("e")) == .mark("いいてて"))
+    }
+
+    func testBracketsBecomeJapaneseQuotes() {
+        var session = InputSession()
+        XCTAssertTrue(type("[a]", in: &session) == .mark("「あ」"))
     }
 
     func testJapanesePunctuationAndWidthsRemainMarkedUntilEnter() {
         var session = InputSession()
         XCTAssertTrue(type("kana,", in: &session) == .mark("かな、"))
-        XCTAssertTrue(type("1!.", in: &session) == .mark("かな、１！。"))
-        XCTAssertTrue(session.handle(.enter) == .commit("かな、１！。"))
+        XCTAssertTrue(type("1!.", in: &session) == .mark("かな、1！。"))
+        XCTAssertTrue(session.handle(.enter) == .commit("かな、1！。"))
         XCTAssertTrue(session.handle(.space) == .commit("　"))
     }
 

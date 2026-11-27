@@ -20,9 +20,15 @@ final class InputController: IMKInputController, @unchecked Sendable {
         }
         return InputSession(converter: converter)
     }()
-    @MainActor private lazy var candidatesPanel = IMKCandidates(server: server(), panelType: kIMKSingleColumnScrollingCandidatePanel)
-    private var visibleCandidates: [String] = []
-    private var isUpdatingCandidates = false
+    @MainActor private lazy var candidateWindow: CandidateWindow = {
+        let window = CandidateWindow()
+        window.onSelect = { [weak self] text in
+            guard let self, let client = self.client() else { return }
+            _ = self.apply(self.session.selectCandidate(text, confirm: true), to: client)
+        }
+        return window
+    }()
+    private var isShowingCandidates = false
 
     override func activateServer(_ sender: Any!) {
         guard Thread.isMainThread, let source = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue(),
@@ -107,16 +113,6 @@ final class InputController: IMKInputController, @unchecked Sendable {
         MainActor.assumeIsolated { DictionaryPreferences.shared.show() }
     }
 
-    override func candidateSelectionChanged(_ candidate: NSAttributedString!) {
-        guard Thread.isMainThread, !isUpdatingCandidates, let candidate, let client = client() else { return }
-        _ = apply(session.selectCandidate(candidate.string, confirm: false), to: client, refreshCandidates: false)
-    }
-
-    override func candidateSelected(_ candidate: NSAttributedString!) {
-        guard Thread.isMainThread, !isUpdatingCandidates, let candidate, let client = client() else { return }
-        _ = apply(session.selectCandidate(candidate.string, confirm: true), to: client)
-    }
-
     /// JIS keyboards: かな switches to Japanese, 英数 to English.
     private static func modeKey(for event: NSEvent) -> InputSession.Mode? {
         switch Int(event.keyCode) {
@@ -139,6 +135,9 @@ final class InputController: IMKInputController, @unchecked Sendable {
             case kVK_LeftArrow: return .shrinkSegment
             case kVK_RightArrow: return .expandSegment
             case kVK_Space: return .previousCandidate
+            // Shift+Return commits pending text like Return; apps that treat it as a newline
+            // would otherwise drop the marked text.
+            case kVK_Return, kVK_ANSI_KeypadEnter: return .enter
             default: break
             }
         }
@@ -158,8 +157,7 @@ final class InputController: IMKInputController, @unchecked Sendable {
         return event.characters.map(InputSession.Key.text)
     }
 
-    private func apply(_ action: InputSession.Action, to client: any IMKTextInput,
-                       refreshCandidates: Bool = true) -> Bool {
+    private func apply(_ action: InputSession.Action, to client: any IMKTextInput) -> Bool {
         switch action {
         case .passThrough:
             return false
@@ -177,7 +175,7 @@ final class InputController: IMKInputController, @unchecked Sendable {
             )
             marked.addAttribute(.underlineStyle, value: NSUnderlineStyle.thick.rawValue, range: range)
             client.setMarkedText(marked, selectionRange: range, replacementRange: Self.currentSelection)
-            if refreshCandidates { MainActor.assumeIsolated { showCandidates(for: conversion) } }
+            showCandidates(for: conversion, client: client)
         case .commit(let text):
             hideCandidates()
             client.insertText(text, replacementRange: Self.currentSelection)
@@ -196,31 +194,24 @@ final class InputController: IMKInputController, @unchecked Sendable {
         return true
     }
 
-    @MainActor private func showCandidates(for conversion: ConversionPresentation) {
-        guard !conversion.visibleCandidates.isEmpty, let candidatesPanel else {
+    private func showCandidates(for conversion: ConversionPresentation, client: any IMKTextInput) {
+        guard !conversion.visibleCandidates.isEmpty else {
             hideCandidates()
             return
         }
-        isUpdatingCandidates = true
-        defer { isUpdatingCandidates = false }
-        if visibleCandidates != conversion.visibleCandidates {
-            visibleCandidates = conversion.visibleCandidates
-            candidatesPanel.setCandidateData(visibleCandidates.map { NSAttributedString(string: $0) })
+        var anchor = NSRect.zero
+        _ = client.attributes(forCharacterIndex: conversion.selection.lowerBound, lineHeightRectangle: &anchor)
+        if anchor == .zero { anchor = NSRect(origin: NSEvent.mouseLocation, size: .zero) }
+        MainActor.assumeIsolated {
+            candidateWindow.show(candidates: conversion.visibleCandidates,
+                                 selected: conversion.selectedCandidate, anchor: anchor)
         }
-        if !candidatesPanel.isVisible() {
-            candidatesPanel.show(kIMKLocateCandidatesBelowHint)
-        }
-        let identifier = candidatesPanel.candidateIdentifier(atLineNumber: conversion.selectedCandidate)
-        _ = candidatesPanel.selectCandidate(withIdentifier: identifier)
+        isShowingCandidates = true
     }
 
     private func hideCandidates() {
-        guard !visibleCandidates.isEmpty else { return }
-        visibleCandidates = []
-        MainActor.assumeIsolated {
-            isUpdatingCandidates = true
-            defer { isUpdatingCandidates = false }
-            candidatesPanel?.hide()
-        }
+        guard isShowingCandidates else { return }
+        isShowingCandidates = false
+        MainActor.assumeIsolated { candidateWindow.hide() }
     }
 }
