@@ -19,7 +19,7 @@
 	<key>CFBundleShortVersionString</key>
 	<string>0.1.0</string>
 	<key>CFBundleVersion</key>
-	<string>11</string>
+	<string>12</string>
 	<key>ComponentInputModeDict</key>
 	<dict>
 		<key>tsInputModeListKey</key>
@@ -43,6 +43,8 @@
 				<true/>
 				<key>tsInputModeIsVisibleKey</key>
 				<true/>
+				<key>tsInputModeJISKeyboardShortcutKey</key>
+				<integer>1</integer>
 				<key>tsInputModeKeyEquivalentKey</key>
 				<string>J</string>
 				<key>tsInputModeKeyEquivalentModifiersKey</key>
@@ -70,19 +72,21 @@
 				<key>TISIntendedLanguage</key>
 				<string>en</string>
 				<key>tsInputModeAlternateMenuIconFileKey</key>
-				<string>Roman.tiff</string>
+				<string>Japanese.tiff</string>
 				<key>tsInputModeDefaultStateKey</key>
 				<true/>
 				<key>tsInputModeIsVisibleKey</key>
 				<true/>
+				<key>tsInputModeJISKeyboardShortcutKey</key>
+				<integer>3</integer>
 				<key>tsInputModeKeyEquivalentKey</key>
 				<string>;</string>
 				<key>tsInputModeKeyEquivalentModifiersKey</key>
 				<integer>4608</integer>
 				<key>tsInputModeMenuIconFileKey</key>
-				<string>Roman.tiff</string>
+				<string>Japanese.tiff</string>
 				<key>tsInputModePaletteIconFileKey</key>
-				<string>Roman.tiff</string>
+				<string>Japanese.tiff</string>
 				<key>tsInputModePrimaryInScriptKey</key>
 				<false/>
 				<key>tsInputModeScriptKey</key>

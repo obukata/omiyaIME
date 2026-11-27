@@ -50,6 +50,10 @@
 - 日常利用の変換精度、安定性、キー衝突、アクセシビリティ、スリープ復帰、複数アプリを評価。
 - 指摘を分類し、仕様変更の承認後に改善。対応対象にした最小OSと各OS世代で、導入から削除まで検証する。
 
+**未解決の課題**
+
+- 入力ソースの一覧で「ひらがな（おみや）」が重複して出る（2026-11-27 利用者報告）。TISの一覧で `jp.omiyaime.inputmethod.omiyaIME.Japanese` が2件返る。どちらも同じバンドル（~/Library/Input Methods）を指す。次を試したが、どれも変わらなかった：入力ソースのキャッシュ削除、TextInputMenuAgentの再起動、ビルド先のコピーのLaunchServices登録解除、再登録、`tsInputModeJISKeyboardShortcutKey` の追加。Info.plistはazooKeyとほぼ同じ構成で、azooKeyは重複しない。ログアウト・ログイン後に再確認する。旧バンドルID（`jp.omiyaime.inputmethod`）の `/Library/Input Methods/omiyaIME.app` は、削除に管理者権限が必要なため残っている（TISは無視している）。
+
 **解決済みの課題**
 
 - カーソル下の入力モード表示（macOSの青い吹き出し）が空だった件は、2026-11-27 に入力メニュー用アイコンを16ptテンプレート画像（1x/2x）にしたことで、アイコンが表示されるようになった（利用者が実機で確認）。この表示には `TISIconLabels` ではなく、メニューアイコンが使われる。

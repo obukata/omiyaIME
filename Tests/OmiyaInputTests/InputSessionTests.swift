@@ -72,6 +72,7 @@ final class InputSessionTests: XCTestCase {
     func testBracketsBecomeJapaneseQuotes() {
         var session = InputSession()
         XCTAssertTrue(type("[a]", in: &session) == .mark("「あ」"))
+        XCTAssertTrue(type("/", in: &session) == .mark("「あ」・"))
     }
 
     func testJapanesePunctuationAndWidthsRemainMarkedUntilEnter() {

@@ -32,6 +32,7 @@ struct Romaji {
         case "-": kana.append("ー")
         case "[": kana.append("「")
         case "]": kana.append("」")
+        case "/": kana.append("・")
         case "0"..."9": kana.append(Character(symbol))
         default: kana.append(Self.fullWidth(symbol))
         }
