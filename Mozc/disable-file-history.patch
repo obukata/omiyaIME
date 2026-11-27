@@ -1,0 +1,23 @@
+diff --git a/src/engine/modules.cc b/src/engine/modules.cc
+--- a/src/engine/modules.cc
++++ b/src/engine/modules.cc
+@@ -129,11 +129,6 @@
+     RETURN_IF_NULL(dictionary_);
+   }
+ 
+-  if (!user_history_storage_) {
+-    user_history_storage_ = std::make_unique<prediction::UserHistoryStorage>();
+-    RETURN_IF_NULL(user_history_storage_);
+-  }
+-
+   auto status_or_connector =
+       Connector::Create(data_manager_->GetConnectorData());
+   if (!status_or_connector.ok()) {
+@@ -193,7 +188,6 @@
+   RETURN_IF_NULL(user_dictionary_);
+   RETURN_IF_NULL(pos_group_);
+   RETURN_IF_NULL(single_kanji_dictionary_);
+-  RETURN_IF_NULL(user_history_storage_);
+   RETURN_IF_NULL(supplemental_model_);
+ 
+   return absl::Status();

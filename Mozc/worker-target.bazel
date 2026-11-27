@@ -1,0 +1,17 @@
+mozc_cc_binary(
+    name = "omiya-mozc",
+    srcs = ["omiya_mozc_worker.cc"],
+    deps = [
+        "//converter",
+        "//converter:immutable_converter",
+        "//converter:segments",
+        "//data_manager",
+        "//dictionary:dictionary_interface",
+        "//engine:modules",
+        "//prediction:predictor_interface",
+        "//protocol:commands_cc_proto",
+        "//protocol:config_cc_proto",
+        "//request:conversion_request",
+        "//rewriter:rewriter_interface",
+    ],
+)
