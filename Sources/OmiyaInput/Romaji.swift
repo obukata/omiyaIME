@@ -82,10 +82,10 @@ struct Romaji {
             }
 
             if pending.hasPrefix("nn") {
-                let next = pending[pending.index(pending.startIndex, offsetBy: 2)]
-                // Keep the second n when it starts the next syllable, as in konnichiha.
+                // "nn" is already shown as ん, so it stays ん and the next letter starts afresh
+                // (funniki → ふんいき). Type a third n for にゃ・に, as in konnnichiha.
                 kana.append("ん")
-                pending.removeFirst("aiueoy".contains(next) ? 1 : 2)
+                pending.removeFirst(2)
                 continue
             }
 
