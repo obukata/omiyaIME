@@ -2,8 +2,8 @@ import AppKit
 import QuartzCore
 
 /// Omiya's round stage: he walks in the middle and the street scrolls behind him.
-/// The circle has a dotted white rim with a black shadow, a status plate sits below it,
-/// and a gear button sits at the upper right. There is no window frame.
+/// The circle has a dotted white rim with a black shadow, a status plate overlaps its lower part,
+/// and a gear button sits on the rim at the upper right. There is no window frame.
 @MainActor
 public final class WalkView: NSView {
     /// Tuning values for the prototype. All lengths are in points.
@@ -11,11 +11,14 @@ public final class WalkView: NSView {
         /// Size of one dot of the frame, rim, shadow and gear.
         public var dot: CGFloat = 2
         /// Circle diameter in dots.
-        public var diameterDots = 170
+        public var diameterDots = 140
         public var rimDots = 2
         public var shadowDots = 2
         public var margin: CGFloat = 8
-        public var statusGap: CGFloat = 10
+        /// Gap between the bottom of the status plate and the bottom of the circle.
+        public var statusInset: CGFloat = 8
+        /// Where the gear sits on the rim, in degrees up from the right.
+        public var gearAngle: CGFloat = 40
         public var statusWidth = 220
         /// Size of one sprite frame (the PNGs are drawn at 2x).
         public var spriteSize = CGSize(width: 120, height: 80)
@@ -23,7 +26,7 @@ public final class WalkView: NSView {
         public var spriteBaseline: CGFloat = 75
         /// Where the dog's feet are, as a fraction of the circle's height from its top.
         /// A little below the middle, so more of the street shows than of the road.
-        public var feetLine: CGFloat = 0.64
+        public var feetLine: CGFloat = 0.62
         /// Points per pixel of the street picture.
         public var streetScale: CGFloat = 0.6
         /// Sidewalk line in the street picture, in its pixels from the top.
@@ -70,10 +73,8 @@ public final class WalkView: NSView {
     private var timer: Timer?
 
     public static func size(for layout: Layout) -> CGSize {
-        let plateHeight: CGFloat = 60
-        return CGSize(width: layout.diameter + layout.margin * 2,
-                      height: layout.margin + layout.diameter + layout.shadow + layout.statusGap
-                          + plateHeight + layout.shadow + layout.margin)
+        CGSize(width: layout.diameter + layout.margin * 2,
+               height: layout.margin + layout.diameter + layout.shadow + layout.margin)
     }
 
     public init(layout: Layout = Layout()) {
@@ -150,7 +151,10 @@ public final class WalkView: NSView {
 
         // The gear is drawn in the scene; a clear view on top of it takes the clicks.
         let gearSide = 18 * layout.dot
-        let gearFrame = CGRect(x: m + side - gearSide, y: m, width: gearSide, height: gearSide)
+        let angle = layout.gearAngle * .pi / 180
+        let gearCenter = CGPoint(x: m + side / 2 + side / 2 * cos(angle), y: m + side / 2 - side / 2 * sin(angle))
+        let gearFrame = CGRect(x: (gearCenter.x - gearSide / 2).rounded(), y: (gearCenter.y - gearSide / 2).rounded(),
+                               width: gearSide, height: gearSide)
         scene.addSublayer(pixelLayer(PixelArt.gear(), frame: gearFrame))
         gear.frame = CGRect(x: gearFrame.minX, y: bounds.height - gearFrame.maxY, width: gearSide, height: gearSide)
         addSubview(gear)
@@ -162,7 +166,7 @@ public final class WalkView: NSView {
                                          width: layout.statusWidth, border: border) else { return }
         let size = CGSize(width: image.width / 2, height: image.height / 2)
         let origin = CGPoint(x: (bounds.width - size.width) / 2,
-                             y: layout.margin + layout.diameter + layout.shadow + layout.statusGap)
+                             y: layout.margin + layout.diameter - layout.statusInset - size.height)
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         plate.frame = CGRect(origin: origin, size: size)
