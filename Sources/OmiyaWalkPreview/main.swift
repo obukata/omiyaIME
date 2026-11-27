@@ -11,8 +11,13 @@ final class PreviewDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         let panel = WalkPanel()
         let menu = NSMenu()
+        let settings = menu.addItem(withTitle: "おみや君の設定…（準備中）", action: nil, keyEquivalent: "")
+        settings.isEnabled = false
+        menu.autoenablesItems = false
+        menu.addItem(.separator())
         menu.addItem(withTitle: "終了", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "")
-        panel.contentView?.menu = menu
+        panel.walkView?.menu = menu
+        panel.walkView?.gearMenu = menu
         panel.placeAtLowerRight()
         panel.orderFrontRegardless()
         self.panel = panel

@@ -5,8 +5,7 @@ import AppKit
 @MainActor
 public final class WalkPanel: NSPanel {
     public init(layout: WalkView.Layout = WalkView.Layout()) {
-        let side = layout.diameter
-        super.init(contentRect: CGRect(x: 0, y: 0, width: side, height: side),
+        super.init(contentRect: CGRect(origin: .zero, size: WalkView.size(for: layout)),
                    styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         isOpaque = false
         backgroundColor = .clear
@@ -17,6 +16,8 @@ public final class WalkPanel: NSPanel {
         hidesOnDeactivate = false
         contentView = WalkView(layout: layout)
     }
+
+    public var walkView: WalkView? { contentView as? WalkView }
 
     public override var canBecomeKey: Bool { false }
     public override var canBecomeMain: Bool { false }
