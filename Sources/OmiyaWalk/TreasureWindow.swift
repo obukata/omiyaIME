@@ -47,10 +47,12 @@ public final class TreasureWindowController {
 
 /// A dark grid of treasure slots, like an achievements screen.
 @MainActor
-final class TreasureGridView: NSView {
+final class TreasureGridView: NSView, NSViewToolTipOwner {
     private let treasures = TreasureCatalog.all
     private let found: [String: Int]
     private var images: [String: CGImage] = [:]
+    /// Tool tip text by the tag AppKit returns for each cell.
+    private var tips: [NSView.ToolTipTag: String] = [:]
     private let columns = 8
     private let cell: CGFloat = 48
     private let padding: CGFloat = 20
@@ -67,7 +69,8 @@ final class TreasureGridView: NSView {
             let isFound = (found[treasure.id] ?? 0) > 0
             if isFound { images[treasure.id] = WalkArt.image(named: treasure.id) }
             let tip = isFound ? treasure.name : "？？？（まだ見つけていない）"
-            addToolTip(cellRect(index), owner: tip as NSString, userData: nil)
+            // The view answers for its tool tips; a temporary string as owner is not kept alive.
+            tips[addToolTip(cellRect(index), owner: self, userData: nil)] = tip
         }
     }
 
@@ -75,6 +78,11 @@ final class TreasureGridView: NSView {
     required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }
 
     override var isFlipped: Bool { true }
+
+    nonisolated func view(_ view: NSView, stringForToolTip tag: NSView.ToolTipTag, point: NSPoint,
+                          userData data: UnsafeMutableRawPointer?) -> String {
+        MainActor.assumeIsolated { tips[tag] ?? "" }
+    }
 
     private func cellRect(_ index: Int) -> CGRect {
         CGRect(x: padding + CGFloat(index % columns) * cell, y: header + padding + CGFloat(index / columns) * cell,
