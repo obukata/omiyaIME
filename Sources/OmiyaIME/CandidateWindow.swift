@@ -66,7 +66,7 @@ private final class CandidateListView: NSView {
         .withSymbolConfiguration(.init(pointSize: 8, weight: .semibold))
     private static let footerHeight: CGFloat = 12
     private static let rowHeight: CGFloat = 30
-    private static let inset: CGFloat = 8
+    private static let inset: CGFloat = 5
     private static let labelWidth: CGFloat = 16
 
     var onClick: ((String) -> Void)?
@@ -105,7 +105,7 @@ private final class CandidateListView: NSView {
             }
             let textColor: NSColor = isSelected ? .alternateSelectedControlTextColor : .labelColor
             if index > 0, !isSelected, index - 1 != selectedRow {
-                NSColor.separatorColor.withAlphaComponent(0.5).setFill()
+                NSColor.separatorColor.setFill()
                 NSRect(x: row.minX + 9, y: row.minY - 0.25, width: row.width - 18, height: 0.5).fill()
             }
             let labelColor: NSColor = isSelected
