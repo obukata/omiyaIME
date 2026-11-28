@@ -67,6 +67,41 @@ enum PixelArt {
         }
     }
 
+    /// An 18×18 speaker in white with a black edge, to match the gear: sound waves when on, an X when off.
+    static func speaker(on: Bool) -> CGImage? {
+        let waves = [
+            "......W.....W.....",
+            ".....WW......W....",
+            "....WWW..W....W...",
+            ".WWWWWW...W...W...",
+            ".WWWWWW...W....W..",
+            ".WWWWWW.W..W...W..",
+            ".WWWWWW.W..W...W..",
+            ".WWWWWW...W....W..",
+            ".WWWWWW...W...W...",
+            "....WWW..W....W...",
+            ".....WW......W....",
+            "......W.....W....."
+        ]
+        let cross = [
+            "......W...........",
+            ".....WW...........",
+            "....WWW...........",
+            ".WWWWWW..W...W....",
+            ".WWWWWW...W.W.....",
+            ".WWWWWW....W......",
+            ".WWWWWW....W......",
+            ".WWWWWW...W.W.....",
+            ".WWWWWW..W...W....",
+            "....WWW...........",
+            ".....WW...........",
+            "......W..........."
+        ]
+        let blank = String(repeating: ".", count: 18)
+        return fromRows([blank, blank, blank] + (on ? waves : cross) + [blank, blank, blank],
+                        palette: ["W": white], outline: black)
+    }
+
     /// Draws a picture from rows of letters, one letter per dot; '.' is transparent.
     /// Dots next to the shape that are still transparent become `outline`, if given.
     static func fromRows(_ rows: [String], palette: [Character: RGBA], outline: RGBA? = nil) -> CGImage? {

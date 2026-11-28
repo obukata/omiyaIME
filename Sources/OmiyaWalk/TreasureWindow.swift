@@ -53,7 +53,7 @@ final class TreasureGridView: NSView, NSViewToolTipOwner {
     private var images: [String: CGImage] = [:]
     /// Tool tip text by the tag AppKit returns for each cell.
     private var tips: [NSView.ToolTipTag: String] = [:]
-    private let columns = 8
+    private let columns = 12
     private let cell: CGFloat = 48
     private let padding: CGFloat = 20
     private let header: CGFloat = 40
@@ -62,8 +62,8 @@ final class TreasureGridView: NSView, NSViewToolTipOwner {
 
     init(found: [String: Int]) {
         self.found = found
-        let rows = (treasures.count + 7) / 8
-        super.init(frame: CGRect(x: 0, y: 0, width: padding * 2 + cell * 8,
+        let rows = (treasures.count + columns - 1) / columns
+        super.init(frame: CGRect(x: 0, y: 0, width: padding * 2 + cell * CGFloat(columns),
                                  height: header + padding + cell * CGFloat(rows) + padding))
         for (index, treasure) in treasures.enumerated() {
             let isFound = (found[treasure.id] ?? 0) > 0

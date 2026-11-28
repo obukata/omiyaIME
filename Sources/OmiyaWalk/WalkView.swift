@@ -7,7 +7,7 @@ import QuartzCore
 /// pointer on him for a moment shows the whole stage, which then takes clicks until the
 /// pointer leaves it.
 /// The circle has a dotted white rim with a black shadow, a status plate overlaps its lower part,
-/// and a treasure chest and a gear sit on the rim at the right. There is no window frame.
+/// and a treasure chest, a speaker and a gear sit on the rim at the right. There is no window frame.
 @MainActor
 public final class WalkView: NSView {
     /// Tuning values for the prototype. All lengths are in points.
@@ -22,7 +22,8 @@ public final class WalkView: NSView {
         /// Gap between the bottom of the status plate and the bottom of the circle.
         public var statusInset: CGFloat = 8
         /// Where the icons sit on the rim, in degrees up from the right.
-        public var treasureAngle: CGFloat = 40
+        public var treasureAngle: CGFloat = 44
+        public var soundAngle: CGFloat = 28.5
         public var gearAngle: CGFloat = 13
         public var statusWidth = 220
         /// Size of one sprite frame (the PNGs are drawn at 2x).
@@ -91,6 +92,9 @@ public final class WalkView: NSView {
     private var feetPoint = CGPoint.zero
     private let gear = IconButton(toolTip: "おみや君の設定")
     private let treasure = IconButton(toolTip: "たからもの")
+    private let speaker = IconButton(toolTip: "")
+    private let speakerIcon = CALayer()
+    private let sound: WalkSound
     /// Parts shown only while the stage is open.
     private let below = CALayer()
     private let above = CALayer()
@@ -109,6 +113,8 @@ public final class WalkView: NSView {
     private var poses = PoseMachine()
     private var lastSteps: Int?
     private var lastDigCount: Int?
+    private var lastFrame: PoseMachine.Frame?
+    private var wasShowingFind = false
     /// The treasure from the latest dig, shown above Omiya for a moment.
     private let findIcon = CALayer()
     private let findLabel = CALayer()
@@ -125,8 +131,10 @@ public final class WalkView: NSView {
     }
 
     /// `progressFile` is read about once a second for the distance; nil shows 0.
-    public init(layout: Layout = Layout(), progressFile: WalkProgressFile? = WalkProgressFile()) {
+    public init(layout: Layout = Layout(), progressFile: WalkProgressFile? = WalkProgressFile(),
+                sound: WalkSound = .shared) {
         self.layout = layout
+        self.sound = sound
         self.progressFile = progressFile
         let names = (0..<4).map { "walk_\($0)" } + (0..<5).map { "sit_\($0)" } + (0..<6).map { "sleep_\($0)" }
             + (0..<8).map { "dig_\($0)" } + (0..<6).map { "sniff_\($0)" } + ["zz"]
@@ -135,6 +143,12 @@ public final class WalkView: NSView {
         super.init(frame: CGRect(origin: .zero, size: Self.size(for: layout)))
         wantsLayer = true
         setUpLayers()
+        drawSpeaker()
+        speaker.onClick = { [weak self] in
+            guard let self else { return }
+            self.sound.isOn.toggle()
+            self.drawSpeaker()
+        }
         // Property observers do not run inside init, so draw the plate here.
         if let progressFile { status = .walked(progressFile.load()) }
         drawStatus()
@@ -239,6 +253,7 @@ public final class WalkView: NSView {
 
         // Icons are drawn in the scene; a clear view on top of each takes the clicks.
         for (image, angle, button) in [(PixelArt.treasureChest(), layout.treasureAngle, treasure),
+                                       (nil, layout.soundAngle, speaker),
                                        (PixelArt.gear(), layout.gearAngle, gear)] {
             let iconSide = 18 * layout.dot
             let radians = angle * .pi / 180
@@ -246,10 +261,25 @@ public final class WalkView: NSView {
             let frame = CGRect(x: (center.x - iconSide / 2).rounded(), y: (center.y - iconSide / 2).rounded(),
                                width: iconSide, height: iconSide)
             iconFrames.append(frame)
-            above.addSublayer(pixelLayer(image, frame: frame))
+            if button === speaker {
+                speakerIcon.frame = frame
+                speakerIcon.contentsGravity = .resize
+                speakerIcon.magnificationFilter = .nearest
+                above.addSublayer(speakerIcon)
+            } else {
+                above.addSublayer(pixelLayer(image, frame: frame))
+            }
             button.frame = CGRect(x: frame.minX, y: bounds.height - frame.maxY, width: iconSide, height: iconSide)
             addSubview(button)
         }
+    }
+
+    private func drawSpeaker() {
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        speakerIcon.contents = PixelArt.speaker(on: sound.isOn)
+        CATransaction.commit()
+        speaker.toolTip = sound.isOn ? "音：オン（クリックでオフ）" : "音：オフ（クリックでオン）"
     }
 
     private func drawStatus() {
@@ -317,6 +347,7 @@ public final class WalkView: NSView {
         window?.ignoresMouseEvents = !expanded
         gear.isHidden = !expanded
         treasure.isHidden = !expanded
+        speaker.isHidden = !expanded
         CATransaction.begin()
         CATransaction.setAnimationDuration(animated ? (expanded ? layout.fadeInDuration : layout.fadeOutDuration) : 0)
         CATransaction.setDisableActions(!animated)
@@ -398,6 +429,13 @@ public final class WalkView: NSView {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         let pose = poses.update(at: elapsed)
+        if pose.frame != lastFrame {
+            // A scrape on every other dig frame; a jingle when the find shows.
+            if case .dig(let index) = pose.frame, index % 2 == 1 { sound.playDig() }
+            lastFrame = pose.frame
+        }
+        if pose.showsFind, !wasShowingFind { sound.playFind() }
+        wasShowingFind = pose.showsFind
         if pose.scrolls, streetLoopWidth > 0 {
             offset = (offset + layout.walkSpeed * delta).truncatingRemainder(dividingBy: streetLoopWidth)
             street.position.x = -offset

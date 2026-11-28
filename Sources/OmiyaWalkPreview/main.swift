@@ -40,7 +40,10 @@ final class PreviewDelegate: NSObject, NSApplicationDelegate {
 // Development option: `--treasure-snapshot out.png` writes the treasure list as a picture and exits.
 if let index = CommandLine.arguments.firstIndex(of: "--treasure-snapshot"), index + 1 < CommandLine.arguments.count {
     MainActor.assumeIsolated {
-        let found = Dictionary(uniqueKeysWithValues: TreasureCatalog.all.prefix(12).map { ($0.id, 1) } + [("treasure_43", 2)])
+        // Most found, every fourth still a question mark, one found twice.
+        var found = Dictionary(uniqueKeysWithValues: TreasureCatalog.all.enumerated()
+            .filter { $0.offset % 4 != 3 }.map { ($0.element.id, 1) })
+        found["treasure_43"] = 2
         if let data = TreasureWindowController.snapshotPNG(found: found) {
             try? data.write(to: URL(fileURLWithPath: CommandLine.arguments[index + 1]))
         }
@@ -56,7 +59,7 @@ if let index = CommandLine.arguments.firstIndex(of: "--snapshot"), index + 1 < C
     MainActor.assumeIsolated {
         let args = CommandLine.arguments
         let steps = args.count > index + 3 ? Int(args[index + 3]) : nil
-        let view = WalkView(progressFile: steps == nil ? WalkProgressFile() : nil)
+        let view = WalkView(progressFile: steps == nil ? WalkProgressFile() : nil, sound: WalkSound(muted: true))
         if let steps { view.status = .walked(WalkProgress(steps: steps)) }
         if args.contains("--closed") { view.setExpanded(false, animated: false) } else { view.setExpanded(true, animated: false) }
         if let dig = args.firstIndex(of: "--dig"), dig + 1 < args.count { view.startDig(finding: args[dig + 1]) }

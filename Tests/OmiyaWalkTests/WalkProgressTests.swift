@@ -62,7 +62,7 @@ final class WalkProgressTests: XCTestCase {
         values = [0, 0.86, 0]
         XCTAssertEqual(rule.roll { values.removeFirst() }?.rarity, .uncommon)
         values = [0, 0.99, 0.99]
-        XCTAssertEqual(rule.roll { values.removeFirst() }?.name, "伝説の剣")
+        XCTAssertEqual(rule.roll { values.removeFirst() }?.name, "ふしぎな水晶", "Highest roll: last legendary")
         values = [0.5]
         XCTAssertNil(rule.roll { values.removeFirst() }, "Half of the digs find nothing")
 
@@ -77,8 +77,14 @@ final class WalkProgressTests: XCTestCase {
     }
 
     func testCatalogMatchesTheDraftSheet() {
-        XCTAssertEqual(TreasureCatalog.all.count, 46)
-        XCTAssertEqual(Set(TreasureCatalog.all.map(\.id)).count, 46)
-        XCTAssertEqual(TreasureCatalog.all.filter { $0.rarity == .legendary }.map(\.name), ["ユニコーン", "恐竜の化石", "埴輪", "伝説の剣"])
+        XCTAssertEqual(TreasureCatalog.all.count, 146)
+        XCTAssertEqual(Set(TreasureCatalog.all.map(\.id)).count, 146)
+        XCTAssertEqual(TreasureCatalog.all.filter { $0.rarity == .legendary }.prefix(4).map(\.name), ["ユニコーン", "恐竜の化石", "埴輪", "伝説の剣"])
+        let counts = Dictionary(grouping: TreasureCatalog.all, by: \.rarity).mapValues(\.count)
+        XCTAssertEqual(counts, [.common: 76, .uncommon: 54, .legendary: 16])
+        // Ids already saved in walk.json must keep meaning the same treasure.
+        XCTAssertEqual(TreasureCatalog.treasure(id: "treasure_23")?.name, "フリスビー")
+        XCTAssertEqual(TreasureCatalog.treasure(id: "treasure_47")?.name, "東京タワー")
+        XCTAssertEqual(TreasureCatalog.treasure(id: "treasure_146")?.name, "ふしぎな水晶")
     }
 }
